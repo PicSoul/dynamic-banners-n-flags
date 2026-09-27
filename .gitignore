@@ -30,3 +30,4 @@ __pycache__/
 *.lib
 *.exp
 *.bak_*
+*.bundle
