@@ -118,6 +118,13 @@ The version lives in `include\version.h`.
 - **TruckersMP**: TruckersMP has its own rules about client modifications and may treat memory-modifying plugins as
   a violation. **Use it there at your own risk.**
 
+## Planned
+
+- **Other players in SCS Convoy**: see a friend's banners, flags and beacon units follow *their* beacons, when both
+  of you run the plugin. Players without the plugin keep looking normal. The plugins recognise each other through
+  a tag in the Convoy session's Steam lobby. TruckersMP support may follow after that. Tracked in
+  [the issues](../../issues).
+
 ## License
 
 MIT, see [LICENSE](LICENSE). Includes [MinHook](https://github.com/TsudaKageyu/minhook) (BSD 2-Clause) and the SCS
