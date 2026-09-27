@@ -3,6 +3,8 @@
 #include "config_manager.h"
 #include "mem_safe.h"
 #include "logger.h"
+#include "reflection.h"
+#include <cstring>
 
 namespace DynamicBanners {
 
@@ -36,6 +38,48 @@ static bool Plausible(const char* name, uint32_t value, uint32_t max) {
         return false;
     }
     return true;
+}
+
+static const Operand MODEL_HOOKUPS = { 3, 4 };      // lea rcx, [rdi+disp32]  (array_t of hookups)
+static const Operand GET_CLASS_SLOT = { 13, 1 };    // call qword ptr [rax+disp8]
+
+// Everything beacon detection needs; any missing piece switches only that feature off.
+static void ResolveBeaconDetection(GameLayout* L) {
+    const ModConfig& cfg = ConfigManager::Instance().GetConfig();
+    PatternScanner& scanner = PatternScanner::Instance();
+    size_t n = 0;
+    PatternMatch hookups = scanner.FindUniquePattern(cfg.sig_model_hookups, "ModelHookups", &n);
+    PatternMatch get_class = scanner.FindUniquePattern(cfg.sig_hookup_class, "HookupClass", &n);
+    if (hookups) L->model_hookups_offset = ReadOperand(hookups.address, MODEL_HOOKUPS);
+    if (get_class) L->get_class_vt_slot = ReadOperand(get_class.address, GET_CLASS_SLOT);
+
+    DWORD t0 = GetTickCount();
+    L->flare_vehicle_class = Reflection::FindClass("flare_vehicle");
+    const char* parent = Reflection::ClassName(Reflection::Parent(L->flare_vehicle_class));
+    int64_t lt = L->flare_vehicle_class ? Reflection::AttributeOffset(L->flare_vehicle_class, "light_type") : -1;
+    uint64_t beacon = 0;
+    bool enum_ok = Reflection::EnumValue("aux", "beacon", "brake", &beacon);
+    LOG_INFO("GameLayout: reflection lookup took %lu ms", GetTickCount() - t0);
+
+    bool ok = true;
+    if (!Plausible("model_hookups_offset", L->model_hookups_offset, 0x2000)) ok = false;
+    if (!Plausible("get_class_vt_slot", L->get_class_vt_slot, 0x400)) ok = false;
+    if (!L->flare_vehicle_class) { LOG_ERROR("GameLayout: reflection class 'flare_vehicle' not found"); ok = false; }
+    else if (!parent || strcmp(parent, "light_source") != 0) {
+        LOG_ERROR("GameLayout: class descriptor layout changed (flare_vehicle's parent is '%s')", parent ? parent : "?");
+        ok = false;
+    }
+    if (lt <= 0 || lt > 0x4000) { LOG_ERROR("GameLayout: attribute flare_vehicle.light_type not found"); ok = false; }
+    if (!enum_ok) { LOG_ERROR("GameLayout: light type 'beacon' not found in the enum table"); ok = false; }
+    if (!ok) {
+        LOG_WARN("GameLayout: beacon detection unavailable - beacon accessories will not be toggled");
+        return;
+    }
+    L->light_type_offset = static_cast<uint32_t>(lt);
+    L->beacon_light_bits = beacon;
+    L->beacon_detection = true;
+    LOG_INFO("GameLayout: beacons: hookups=+0x%X get_class=vt[0x%X] light_type=+0x%X beacon=0x%llX",
+        L->model_hookups_offset, L->get_class_vt_slot, L->light_type_offset, (unsigned long long)beacon);
 }
 
 bool GameLayoutResolver::Resolve(GameLayout* out) {
@@ -106,6 +150,8 @@ bool GameLayoutResolver::Resolve(GameLayout* out) {
         if (draw) L.patch_draw_function = draw.address;
         else LOG_WARN("GameLayout: flag cloth draw function not found - using the patch-list fallback");
     }
+
+    if (cfg.hide_beacons) ResolveBeaconDetection(&L);
 
     LOG_INFO("GameLayout: game=exe+0x%llX actor=+0x%X truck=+0x%X trailer=+0x%X next=+0x%X",
         (unsigned long long)(L.game_global - scanner.GetModuleBase()), L.actor_offset, L.truck_offset,

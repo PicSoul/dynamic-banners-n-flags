@@ -3,9 +3,14 @@ for American Truck Simulator ({GAME_VERSION})
 https://github.com/PicSoul/dynamic-banners-n-flags
 ====================================================================
 
-Your truck's oversize banners and warning flags (and those on your attached
-trailers) are only shown while your beacons are on. Turn the beacons off and
-they disappear; turn them on and they come back.
+Your truck's oversize banners, warning flags and beacon units (and those on
+your attached trailers) are only shown while your beacons are on. Turn the
+beacons off and they disappear; turn them on and they come back.
+
+Beacon units are roof/chassis beacons and trailer beacon bars and strobe bars.
+Only accessories whose 3D model actually has beacon lights are toggled, so
+bumpers, doors and rear frames never disappear. (Bumpers with built-in
+strobes keep their lamp housings; the strobes are simply off.)
 
 Only YOUR truck and trailers are affected - never AI traffic or other players.
 
@@ -36,8 +41,10 @@ WHERE IT APPLIES
   Pause menu, service center . always shown (so you can see what's installed)
 
 Supported accessory slots: f_banner, flag_f_l, flag_f_r (trucks) and
-r_banner, flag_r_l, flag_r_r (trailers) - every base-game truck and trailer.
-Modded trucks/trailers that use the same slot names work too.
+r_banner, flag_r_l, flag_r_r (trailers) - every base-game truck and trailer -
+plus beacon units in the beacon, chs_beacon and rear_body slots. Modded
+trucks/trailers that use the same slot names work too. Set HideBeacons = 0 in
+dynamic_banners.ini to keep beacon units always visible.
 
 
 AFTER A GAME UPDATE

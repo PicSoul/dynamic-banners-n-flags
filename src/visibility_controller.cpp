@@ -1,6 +1,7 @@
 #include "visibility_controller.h"
 #include "mem_safe.h"
 #include "logger.h"
+#include "reflection.h"
 #include <algorithm>
 #include <cstdio>
 
@@ -8,26 +9,64 @@ namespace DynamicBanners {
 
 static const uint64_t MAX_RECORDS = 1024;
 static const uint64_t MAX_PATCHES = 64;
+static const uintptr_t REC_MODEL = 0x10;   // accessory record: model_object* (record constructor 0x904E40)
 
 void VisibilityController::Initialize(const GameLayout& layout, const std::vector<uint64_t>& target_tokens,
+                                      const std::vector<uint64_t>& beacon_tokens,
                                       bool affect_trailers, uint32_t max_trailers,
                                       PublishHiddenPatchesFn publish_hidden_patches) {
     layout_ = layout;
     tokens_ = target_tokens;
+    beacon_tokens_ = layout.beacon_detection ? beacon_tokens : std::vector<uint64_t>();
     affect_trailers_ = affect_trailers && layout.trailer_connected_offset != 0;
     max_trailers_ = max_trailers;
     publish_ = publish_hidden_patches;
     vehicles_.clear();
     have_last_ = false;
     last_published_ = 0;
-    active_ = !tokens_.empty();
-    LOG_INFO("VisibilityController: %s with %zu target slot tokens, trailers %s, flag cloth via %s",
-        active_ ? "active" : "inactive", tokens_.size(), affect_trailers_ ? "on" : "off",
+    active_ = !tokens_.empty() || !beacon_tokens_.empty();
+    LOG_INFO("VisibilityController: %s with %zu target slots + %zu beacon slots, trailers %s, flag cloth via %s",
+        active_ ? "active" : "inactive", tokens_.size(), beacon_tokens_.size(), affect_trailers_ ? "on" : "off",
         publish_ ? "draw hook" : "patch-list fallback");
 }
 
 bool VisibilityController::IsTarget(uint64_t token) const {
     return token != 0 && std::find(tokens_.begin(), tokens_.end(), token) != tokens_.end();
+}
+
+// A model has beacon lights if one of its hookups is a flare_vehicle (or subclass) whose light_type has the
+// beacon bit. Classes come from the game's own getter, so modded accessories are recognised the same way.
+bool VisibilityController::ModelHasBeaconLight(uint64_t model) const {
+    uint64_t data = 0, count = 0;
+    if (!IsHeapPtr(model) || !SafeReadU64(model + layout_.model_hookups_offset + 8, &data) ||
+        !SafeReadU64(model + layout_.model_hookups_offset + 16, &count) || !IsHeapPtr(data) || count > 256) return false;
+    for (uint64_t i = 0; i < count; ++i) {
+        uint64_t hookup = 0;
+        if (!SafeReadU64(static_cast<uintptr_t>(data + i * 8), &hookup) || !IsHeapPtr(hookup)) continue;
+        uintptr_t cls = SafeCallGetClass(static_cast<uintptr_t>(hookup), layout_.get_class_vt_slot);
+        bool is_flare_vehicle = false;
+        for (int depth = 0; depth < 12 && cls; ++depth, cls = Reflection::Parent(cls)) {
+            if (cls == layout_.flare_vehicle_class) { is_flare_vehicle = true; break; }
+        }
+        uint32_t light_type = 0;
+        if (is_flare_vehicle && SafeReadU32(static_cast<uintptr_t>(hookup + layout_.light_type_offset), &light_type) &&
+            (light_type & layout_.beacon_light_bits) != 0) return true;
+    }
+    return false;
+}
+
+bool VisibilityController::IsTargetRecord(Vehicle& v, uint64_t token, uintptr_t record) {
+    if (IsTarget(token)) return true;
+    if (beacon_tokens_.empty() || std::find(beacon_tokens_.begin(), beacon_tokens_.end(), token) == beacon_tokens_.end())
+        return false;
+    uint64_t model = 0;
+    if (!SafeReadU64(record + REC_MODEL, &model)) return false;
+    for (const auto& m : v.beacon_models) if (m.first == model) return m.second;
+    bool beacon = ModelHasBeaconLight(model);
+    v.beacon_models.push_back({ model, beacon });
+    LOG_INFO("VisibilityController: accessory in a beacon slot on 0x%llX %s beacon lights",
+        (unsigned long long)v.obj, beacon ? "HAS" : "has no");
+    return beacon;
 }
 
 // game -> local player actor -> truck, first trailer -> next trailer -> ...
@@ -77,6 +116,7 @@ int VisibilityController::HideRecords(Vehicle& v, bool* has_targets) {
     if (data != v.rec_data || count != v.rec_count) {
         // Array (re)built by the game: records we hid before are gone, the new ones start visible.
         v.hidden_records.clear();
+        v.beacon_models.clear();
         v.rec_data = data;
         v.rec_count = count;
     }
@@ -86,7 +126,7 @@ int VisibilityController::HideRecords(Vehicle& v, bool* has_targets) {
     for (uint64_t i = 0; i < count; ++i) {
         uintptr_t rec = static_cast<uintptr_t>(data + i * layout_.record_size);
         uint64_t token = 0, mask = 0;
-        if (!SafeReadU64(rec + layout_.record_token_offset, &token) || !IsTarget(token)) continue;
+        if (!SafeReadU64(rec + layout_.record_token_offset, &token) || !IsTargetRecord(v, token, rec)) continue;
         *has_targets = true;
         if (!SafeReadU64(rec + layout_.record_mask_offset, &mask) || mask == 0) continue;
         auto it = std::find_if(v.hidden_records.begin(), v.hidden_records.end(),

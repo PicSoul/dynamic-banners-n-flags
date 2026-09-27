@@ -68,16 +68,88 @@ SIGNATURES = {
     'Merged': [('merged', 3, 4, 'off')],
     'TrailerConnected': [('trailer_connected', 3, 4, 'off')],
     'PatchDraw': [('patch_draw_function', 0, 0, 'fn')],
+    'ModelHookups': [('model_hookups', 3, 4, 'off')],
+    'HookupClass': [('get_class_vt_slot', 13, 1, 'off')],
 }
 REQUIRED = {'PlayerChain', 'Records', 'Patches', 'NextTrailer', 'Merged'}
 OPTIONAL_NOTE = {
     'TrailerConnected': 'without it, trailers are not toggled',
     'PatchDraw': 'without it, flag cloth uses the fallback (it shows while the game is paused)',
+    'ModelHookups': 'without it, beacon units are not toggled',
+    'HookupClass': 'without it, beacon units are not toggled',
+    'Reflection': 'without it, beacon units are not toggled',
 }
 # Values found for ATS 1.61, shown for comparison only.
 KNOWN_161 = {'actor': 0x31B0, 'truck': 0x18, 'trailer': 0xC8, 'records_data': 0x770, 'records_count': 0x778,
              'patches_data': 0x7C8, 'patches_count': 0x7D0, 'next_trailer': 0x1060, 'merged': 0x1020,
-             'trailer_connected': 0xFB8}
+             'trailer_connected': 0xFB8, 'model_hookups': 0x318, 'get_class_vt_slot': 0x28,
+             'light_type': 0x230, 'beacon': 0x200}
+
+
+def check_reflection(exe):
+    """The beacon detection's name-based lookups, done the same way as src/reflection.cpp but on the file.
+    Returns (values, problems)."""
+    d = exe.data
+    pe = struct.unpack_from('<I', d, 0x3C)[0]
+    base = struct.unpack_from('<Q', d, pe + 24 + 24)[0]
+    secs = {name: (va, vsz, ro, rsz) for name, va, vsz, ro, rsz in exe.sections}
+
+    def rva2off(rva):
+        for va, vsz, ro, rsz in secs.values():
+            if va <= rva < va + rsz:
+                return ro + rva - va
+        return None
+
+    def q(rva):
+        o = rva2off(rva)
+        return struct.unpack_from('<Q', d, o)[0] if o is not None else 0
+
+    def string_at(va_abs):
+        o = rva2off(va_abs - base) if base <= va_abs < base + exe.size_of_image else None
+        return d[o:o + 64].split(b'\0')[0].decode(errors='replace') if o is not None else None
+
+    def strings(s, sec='.rdata'):
+        va, vsz, ro, rsz = secs[sec]
+        blob = d[ro:ro + rsz]
+        return [va + m.start() + 1 for m in re.finditer(b'\0' + re.escape(s.encode()) + b'\0', blob)]
+
+    def pointers_to(value_rva, sec):
+        va, vsz, ro, rsz = secs[sec]
+        needle = struct.pack('<Q', base + value_rva)
+        return [va + m.start() for m in re.finditer(re.escape(needle), d[ro:ro + rsz]) if m.start() % 8 == 0]
+
+    values, problems = {}, []
+    desc = None
+    for s in strings('flare_vehicle'):
+        for meta in pointers_to(s, '.data'):
+            for cand in pointers_to(meta, '.rdata'):
+                if base <= q(cand + 0x20) < base + exe.size_of_image:
+                    desc = cand
+                    break
+            if desc: break
+        if desc: break
+    if not desc:
+        return values, ["class 'flare_vehicle' not found"]
+    parent = q(desc + 0x18)
+    parent_name = string_at(q(q(parent - base) - base)) if parent else None
+    if parent_name != 'light_source':
+        problems.append(f"class layout changed (flare_vehicle's parent is {parent_name!r})")
+    rec = q(desc + 0x20) - base
+    for _ in range(256):
+        if q(rec) != base + desc:
+            break
+        if string_at(q(rec + 32)) == 'light_type':
+            values['light_type'] = q(rec + 8)
+        rec += 40
+    if 'light_type' not in values:
+        problems.append('attribute flare_vehicle.light_type not found')
+    for s in strings('beacon'):
+        for p in pointers_to(s, '.data'):
+            if string_at(q(p - 16)) == 'aux' and string_at(q(p + 16)) == 'brake':
+                values['beacon'] = q(p - 8)
+    if 'beacon' not in values:
+        problems.append("light type 'beacon' not found in the enum table")
+    return values, problems
 
 
 # ------------------------------------------------------------------------------------------------ PE
@@ -392,6 +464,15 @@ def main():
             continue
         print('             could not repair automatically')
         broken.append(name)
+
+    rvalues, rproblems = check_reflection(exe)
+    status = 'OK' if not rproblems else 'BROKEN'
+    print(f'[{status:10}] {"Reflection":17} (by name) ' + ', '.join(
+        f'{k}=0x{v:X}' + ('' if KNOWN_161.get(k, v) == v else f' (1.61: 0x{KNOWN_161[k]:X})') for k, v in rvalues.items()))
+    for p in rproblems:
+        print(f'             ! {p}')
+    if rproblems:
+        broken.append('Reflection')
 
     print()
     fatal = [b for b in broken if b in REQUIRED]

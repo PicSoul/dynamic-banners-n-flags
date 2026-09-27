@@ -17,6 +17,7 @@
 !/packaging/
 !/sdk/
 !/libs/
+!/docs/
 
 # inside whitelisted folders
 /sdk/examples/

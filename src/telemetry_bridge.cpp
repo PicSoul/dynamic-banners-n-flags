@@ -63,12 +63,20 @@ scs_result_t TelemetryBridge::Initialize(const scs_u32_t version, const scs_tele
         if (t) tokens.push_back(t);
         else LOG_WARN("Config: '%s' is not a valid slot name - ignored", slot.c_str());
     }
+    std::vector<uint64_t> beacon_tokens;
+    if (cfg.hide_beacons) {
+        for (const std::string& slot : cfg.beacon_slots) {
+            uint64_t t = EncodeScsToken(slot);
+            if (t) beacon_tokens.push_back(t);
+            else LOG_WARN("Config: '%s' is not a valid beacon slot name - ignored", slot.c_str());
+        }
+    }
     VisibilityController::PublishHiddenPatchesFn publish = nullptr;
     if (layout.patch_draw_function && ClothHook::Install(layout.patch_draw_function)) {
         publish = &ClothHook::SetHiddenPatches;
     }
     cloth_hook_ = publish != nullptr;
-    VisibilityController::Instance().Initialize(layout, tokens, cfg.affect_trailers, cfg.max_trailers, publish);
+    VisibilityController::Instance().Initialize(layout, tokens, beacon_tokens, cfg.affect_trailers, cfg.max_trailers, publish);
 
     p->register_for_event(SCS_TELEMETRY_EVENT_paused, OnPauseEvent, nullptr);
     p->register_for_event(SCS_TELEMETRY_EVENT_started, OnPauseEvent, nullptr);
@@ -79,8 +87,10 @@ scs_result_t TelemetryBridge::Initialize(const scs_u32_t version, const scs_tele
         return SCS_RESULT_ok;
     }
 
-    GameMessage("v" DYNAMIC_BANNERS_VERSION " active - banners/flags on your truck and trailers follow your beacons%s",
-        cloth_hook_ ? "" : " (flag cloth shows while paused: cloth hook unavailable)");
+    GameMessage("v" DYNAMIC_BANNERS_VERSION " active - banners/flags%s on your truck and trailers follow your beacons%s%s",
+        layout.beacon_detection && !beacon_tokens.empty() ? "/beacon units" : "",
+        cloth_hook_ ? "" : " (flag cloth shows while paused: cloth hook unavailable)",
+        cfg.hide_beacons && !layout.beacon_detection ? " (beacon units: detection unavailable, see log)" : "");
     return SCS_RESULT_ok;
 }
 

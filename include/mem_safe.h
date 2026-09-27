@@ -12,6 +12,10 @@ bool SafeReadU8(uintptr_t addr, uint8_t* out);
 bool SafeWriteU64(uintptr_t addr, uint64_t value);
 bool SafeWriteU8(uintptr_t addr, uint8_t value);
 
+// Calls obj->vtable[slot]() - the game's "class descriptor" getter - with the same guards. Only calls code inside
+// the executable; returns 0 on any problem. Game thread only.
+uintptr_t SafeCallGetClass(uintptr_t obj, uint32_t vtable_slot_offset);
+
 // Module range of amtrucks.exe, set once at startup.
 void SetModuleRange(uintptr_t base, uintptr_t end);
 bool IsInModule(uint64_t p);

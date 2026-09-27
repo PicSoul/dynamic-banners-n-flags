@@ -26,7 +26,10 @@ public:
 
     // publish_hidden_patches != nullptr: flag cloth is hidden through the draw hook (no patch-list edits).
     // publish_hidden_patches == nullptr: fallback, flag patches are moved past a reduced list count.
+    // beacon_tokens: slots where an accessory is a target only if its model has beacon lights
+    // (used when layout.beacon_detection is true).
     void Initialize(const GameLayout& layout, const std::vector<uint64_t>& target_tokens,
+                    const std::vector<uint64_t>& beacon_tokens,
                     bool affect_trailers, uint32_t max_trailers, PublishHiddenPatchesFn publish_hidden_patches);
     bool IsActive() const { return active_; }
 
@@ -50,6 +53,7 @@ private:
         // records
         uint64_t rec_data = 0, rec_count = 0;
         std::vector<HiddenRecord> hidden_records;
+        std::vector<std::pair<uint64_t, bool>> beacon_models;   // model -> has beacon lights (cache)
         // truck merged model we switched off
         uintptr_t merged_obj = 0;
         // flag cloth
@@ -62,6 +66,8 @@ private:
 
     bool ResolvePlayerVehicles(std::vector<PlayerVehicle>* out) const;
     bool IsTarget(uint64_t token) const;
+    bool IsTargetRecord(Vehicle& v, uint64_t token, uintptr_t record);
+    bool ModelHasBeaconLight(uint64_t model) const;
     bool StillSameObject(const Vehicle& v) const;
 
     int Hide(Vehicle& v, bool hide_cloth);   // returns number of writes
@@ -74,6 +80,7 @@ private:
 
     GameLayout layout_;
     std::vector<uint64_t> tokens_;
+    std::vector<uint64_t> beacon_tokens_;
     bool affect_trailers_ = true;
     uint32_t max_trailers_ = 10;
     bool active_ = false;

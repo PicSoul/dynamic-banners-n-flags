@@ -24,7 +24,12 @@ static const BuiltinSignature BUILTIN_SIGNATURES[] = {
       &ModConfig::sig_trailer_connected },
     { "DBSIG:PatchDraw=48 89 5C 24 08 48 89 6C 24 10 48 89 74 24 18 57 48 81 EC 20 08 00 00 48 8B 59 ? 48 8B EA "
       "48 8B 05", &ModConfig::sig_patch_draw },
+    { "DBSIG:ModelHookups=48 8D 8F ? ? ? ? 48 3B 59 10 0F 83 ? ? ? ? 48 8B 41 08 49 8B D7", &ModConfig::sig_model_hookups },
+    { "DBSIG:HookupClass=48 8B 45 08 48 8B 0C D8 48 8B 01 FF 50 ? 48 8B C8 48 85 C0 74 ? 48 3B CE",
+      &ModConfig::sig_hookup_class },
 };
+
+static const char* DEFAULT_BEACON_SLOTS = "beacon, chs_beacon, rear_body";
 
 struct BuiltinLayout { const wchar_t* key; uint32_t ModConfig::* field; uint32_t value; };
 static const BuiltinLayout BUILTIN_LAYOUT[] = {
@@ -107,6 +112,11 @@ void ConfigManager::SaveDefault(const std::wstring& ini_path) {
     out << "[Targets]\n";
     out << "; Accessory slot names (the last part of an accessory's unit name, e.g. oversize.scs.lowboy.r_banner)\n";
     out << "Slots = " << DEFAULT_SLOTS << "\n";
+    out << "; 1 = also toggle beacon units (roof/chassis beacons, trailer beacon bars and strobes) with the beacons.\n";
+    out << ";     Only accessories whose model actually has beacon lights are toggled.\n";
+    out << "HideBeacons = 1\n";
+    out << "; Slots checked for beacon units\n";
+    out << "BeaconSlots = " << DEFAULT_BEACON_SLOTS << "\n";
 }
 
 bool ConfigManager::Load(const std::wstring& ini_path, const std::string& game_build) {
@@ -122,6 +132,8 @@ bool ConfigManager::Load(const std::wstring& ini_path, const std::string& game_b
     config_.affect_trailers = ReadBool(L"General", L"AffectTrailers", true, ini_path);
     config_.use_cloth_hook = ReadBool(L"General", L"UseClothHook", true, ini_path);
     config_.target_slots = SplitCommaSeparated(ReadString(L"Targets", L"Slots", DEFAULT_SLOTS, ini_path));
+    config_.hide_beacons = ReadBool(L"Targets", L"HideBeacons", true, ini_path);
+    config_.beacon_slots = SplitCommaSeparated(ReadString(L"Targets", L"BeaconSlots", DEFAULT_BEACON_SLOTS, ini_path));
 
     // Built-in signatures and layout first.
     for (const BuiltinSignature& b : BUILTIN_SIGNATURES) {

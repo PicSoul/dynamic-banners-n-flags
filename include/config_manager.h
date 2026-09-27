@@ -18,6 +18,10 @@ struct ModConfig {
 
     std::vector<std::string> target_slots;  // accessory slot names, e.g. f_banner
 
+    // Beacon accessories: in these slots, an accessory is toggled only if its model has beacon lights.
+    bool hide_beacons = true;
+    std::vector<std::string> beacon_slots;
+
     // Signatures in effect (IDA style, '?' wildcards). Each must match exactly once in amtrucks.exe.
     // Built-in values, replaced by [Signatures] entries from the ini only when that section's GameBuild
     // matches the running game (see Load()).
@@ -30,6 +34,8 @@ struct ModConfig {
     std::string sig_merged;
     std::string sig_trailer_connected;
     std::string sig_patch_draw;
+    std::string sig_model_hookups;
+    std::string sig_hookup_class;
 
     // Layout values that cannot be read from code
     uint32_t record_size = 0x30;

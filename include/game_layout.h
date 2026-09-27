@@ -27,6 +27,14 @@ struct GameLayout {
     // Flag cloth draw function (hook target); 0 = not found, fall back to the patch-list method
     uintptr_t patch_draw_function = 0;
 
+    // Beacon detection (all 0 = unavailable, beacon accessories are not toggled)
+    uint32_t model_hookups_offset = 0;   // array_t of hookup objects in a model_object (+8 data, +0x10 count)
+    uint32_t get_class_vt_slot = 0;      // hookup->vtable[slot]() returns its class descriptor
+    uintptr_t flare_vehicle_class = 0;   // reflection class descriptor of flare_vehicle
+    uint32_t light_type_offset = 0;      // flare_vehicle.light_type field
+    uint64_t beacon_light_bits = 0;      // light_type enum value "beacon"
+    bool beacon_detection = false;
+
     // Record / patch layout (from config; not readable from code)
     uint32_t record_size = 0;
     uint32_t record_token_offset = 0;

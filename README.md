@@ -1,9 +1,13 @@
 # Dynamic Banners-N-Flags
 
-An **American Truck Simulator** plugin that shows your **oversize banners and warning flags only while your beacons
-are on**. It works on your own truck and on every trailer hooked up to it.
+An **American Truck Simulator** plugin that shows your **oversize banners, warning flags and beacon units only while your
+beacons are on**. It works on your own truck and on every trailer hooked up to it.
 
-- Turn the beacons **on** and your banners and flags appear. Turn them **off** and they disappear.
+![Switching the beacons on and off shows and hides the oversize banner, warning flags, roof beacon and the trailer's beacon bar](docs/demo.gif)
+
+- Turn the beacons **on** and your banners, flags and beacon units appear. Turn them **off** and they disappear.
+- Beacon units include roof and chassis beacons, and trailer beacon bars and strobe bars. Only accessories whose
+  3D model actually carries beacon lights are toggled, so bumpers, doors and rear frames never disappear.
 - Only **your own** truck and trailers are affected, never AI traffic or other players in multiplayer.
 - Works on every base-game truck and trailer (slots `f_banner`, `flag_f_l`, `flag_f_r`, `r_banner`, `flag_r_l`,
   `flag_r_r`), and on modded ones that use the same slot names.
@@ -15,7 +19,7 @@ are on**. It works on your own truck and on every trailer hooked up to it.
 1. Copy `dynamic_banners.dll` into `...\American Truck Simulator\bin\win_x64\plugins\` (create `plugins` if it
    doesn't exist). In Steam: right-click the game > Manage > Browse local files > `bin` > `win_x64`.
 2. Start ATS and accept the "SDK plugins" prompt.
-3. Open the console (`~`). You should see `[Dynamic Banners] v1.0.0 active ...`.
+3. Open the console (`~`). You should see `[Dynamic Banners] v1.1.0 active ...`.
 
 To uninstall, delete `dynamic_banners.dll` (and `dynamic_banners.ini` / `.log`) from the `plugins` folder.
 
@@ -43,6 +47,8 @@ The plugin writes this file next to itself on first start. Delete it to go back 
 | `AffectTrailers` | 1 | Also toggle trailers hooked up to your truck |
 | `UseClothHook` | 1 | Hide flag cloth with a small draw hook (0 = no code hooks at all, but then flag cloth has to be shown while paused) |
 | `Slots` | the six slots above | Accessory slot names to toggle (add modded slot names here) |
+| `HideBeacons` | 1 | Also toggle beacon units |
+| `BeaconSlots` | `beacon, chs_beacon, rear_body` | Slots checked for beacon units (an accessory there is toggled only if its model has beacon lights) |
 
 ## How it works
 
@@ -55,6 +61,7 @@ each **hooked-up** trailer, and then:
 | Banners and the static part of flags | The accessory's visibility mask is set to 0 (a data write) |
 | Truck accessories baked into the merged truck model | The truck's merged model is switched off while hidden (a data write) |
 | Flag cloth (physics simulated) | One small hook on the cloth draw function skips your hidden flags. The cloth keeps simulating, so it waves naturally when shown again. |
+| Beacon units | Same visibility mask as banners. An accessory counts as a beacon unit when its model has a light the game classifies as a beacon (class `flare_vehicle`, `light_type` beacon), read from the game's own reflection data by name. |
 
 Everything is undone exactly when the banners should be shown again. Every game-memory access is exception-guarded.
 

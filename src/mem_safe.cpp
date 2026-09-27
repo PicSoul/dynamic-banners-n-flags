@@ -36,6 +36,15 @@ bool SafeWriteU8(uintptr_t addr, uint8_t value) {
     __except (EXCEPTION_EXECUTE_HANDLER) { return false; }
 }
 
+typedef uintptr_t (__fastcall* GetClassFn)(uintptr_t self);
+
+uintptr_t SafeCallGetClass(uintptr_t obj, uint32_t vtable_slot_offset) {
+    uint64_t vt = 0, fn = 0;
+    if (!SafeReadU64(obj, &vt) || !IsInModule(vt) || !SafeReadU64(vt + vtable_slot_offset, &fn) || !IsInModule(fn)) return 0;
+    __try { return reinterpret_cast<GetClassFn>(fn)(obj); }
+    __except (EXCEPTION_EXECUTE_HANDLER) { return 0; }
+}
+
 void SetModuleRange(uintptr_t base, uintptr_t end) {
     g_module_base = base;
     g_module_end = end;

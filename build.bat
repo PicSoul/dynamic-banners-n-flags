@@ -23,6 +23,7 @@ cl /nologo /O2 /MD /std:c++20 /EHsc /W3 /D_WINDOWS /D_USRDLL /D_CRT_SECURE_NO_WA
    "src\config_manager.cpp" ^
    "src\pattern_scanner.cpp" ^
    "src\mem_safe.cpp" ^
+   "src\reflection.cpp" ^
    "src\game_layout.cpp" ^
    "src\visibility_controller.cpp" ^
    "src\telemetry_bridge.cpp" ^
