@@ -1,7 +1,8 @@
 # Dynamic Banners-N-Flags
 
-An **American Truck Simulator** plugin that shows your **oversize banners, warning flags and beacon units only while your
-beacons are on**. It works on your own truck and on every trailer hooked up to it.
+A plugin for **American Truck Simulator** and **Euro Truck Simulator 2** that shows your **oversize banners, warning
+flags and beacon units only while your beacons are on**. It works on your own truck and on every trailer hooked up
+to it.
 
 ![Switching the beacons on and off shows and hides the oversize banner, warning flags, roof beacon and the trailer's beacon bar](docs/demo.gif)
 
@@ -9,23 +10,37 @@ beacons are on**. It works on your own truck and on every trailer hooked up to i
 - Beacon units include roof and chassis beacons, and trailer beacon bars and strobe bars. Only accessories whose
   3D model actually carries beacon lights are toggled, so bumpers, doors and rear frames never disappear.
 - Only **your own** truck and trailers are affected, never AI traffic or other players in multiplayer.
-- Works on every base-game truck and trailer (slots `f_banner`, `flag_f_l`, `flag_f_r`, `r_banner`, `flag_r_l`,
-  `flag_r_r`), and on modded ones that use the same slot names.
+- The same DLL works in both games. It detects which game loaded it and uses that game's defaults.
 
 **Download:** see [Releases](../../releases). The zip contains the DLL and a `README.txt` with install steps.
 
+## What toggles in each game
+
+| | American Truck Simulator | Euro Truck Simulator 2 |
+|---|---|---|
+| Banners and flags (`Slots`) | truck `f_banner`, `flag_f_l`, `flag_f_r`; trailer `r_banner`, `flag_r_l`, `flag_r_r` | trailer `r_banner` (wide/long vehicle, TIR plates) |
+| Beacon units (`BeaconSlots`) | `beacon`, `chs_beacon`, `rear_body` | `beacon`, `chs_beacon`, `rear_body` |
+
+ETS2 trucks have no oversize banners or warning flags. Their `flag_l` / `flag_r` slots hold national flags, which
+keep showing unless you add them to `Slots`. Modded trucks and trailers work too if they use the same slot names;
+otherwise add their slot names in the ini.
+
 ## Install
 
-1. Copy `dynamic_banners.dll` into `...\American Truck Simulator\bin\win_x64\plugins\` (create `plugins` if it
-   doesn't exist). In Steam: right-click the game > Manage > Browse local files > `bin` > `win_x64`.
-2. Start ATS and accept the "SDK plugins" prompt.
-3. Open the console (`~`). You should see `[Dynamic Banners] v1.1.0 active ...`.
+1. Copy `dynamic_banners.dll` into the game's `bin\win_x64\plugins\` folder (create `plugins` if it doesn't exist):
+   - `...\steamapps\common\American Truck Simulator\bin\win_x64\plugins\`
+   - `...\steamapps\common\Euro Truck Simulator 2\bin\win_x64\plugins\`
+
+   In Steam: right-click the game > Manage > Browse local files > `bin` > `win_x64`. Put a copy in both games if
+   you play both.
+2. Start the game and accept the "SDK plugins" prompt.
+3. Open the console (`~`). You should see `[Dynamic Banners] v1.2.0 active ...`.
 
 To uninstall, delete `dynamic_banners.dll` (and `dynamic_banners.ini` / `.log`) from the `plugins` folder.
 
 ## Where the toggle applies
 
-| Scene | Banners and flags |
+| Scene | Banners, flags and beacon units |
 |---|---|
 | Driving, photo mode | Follow the beacons |
 | Pause menu, service center | Always shown |
@@ -36,7 +51,8 @@ to break on game updates.
 
 ## Configuration (`dynamic_banners.ini`, optional)
 
-The plugin writes this file next to itself on first start. Delete it to go back to the defaults.
+The plugin writes this file next to itself on first start, with that game's defaults. Delete it to go back to the
+defaults.
 
 | Key | Default | Meaning |
 |---|---|---|
@@ -46,15 +62,15 @@ The plugin writes this file next to itself on first start. Delete it to go back 
 | `ShowWhilePaused` | 0 | 1 = show everything while the game is paused |
 | `AffectTrailers` | 1 | Also toggle trailers hooked up to your truck |
 | `UseClothHook` | 1 | Hide flag cloth with a small draw hook (0 = no code hooks at all, but then flag cloth has to be shown while paused) |
-| `Slots` | the six slots above | Accessory slot names to toggle (add modded slot names here) |
+| `Slots` | per game, see above | Accessory slot names to toggle |
 | `HideBeacons` | 1 | Also toggle beacon units |
 | `BeaconSlots` | `beacon, chs_beacon, rear_body` | Slots checked for beacon units (an accessory there is toggled only if its model has beacon lights) |
 
 ## How it works
 
-The plugin loads through ATS's official telemetry SDK and reads the beacon state from the `truck.light.beacon`
-channel. Once per frame, on the game thread, it follows the game's own local-player pointer to your truck and to
-each **hooked-up** trailer, and then:
+The plugin loads through the games' official telemetry SDK and reads the beacon state from the
+`truck.light.beacon` channel. Once per frame, on the game thread, it follows the game's own local-player pointer to
+your truck and to each **hooked-up** trailer, and then:
 
 | What | How it is hidden |
 |---|---|
@@ -65,9 +81,9 @@ each **hooked-up** trailer, and then:
 
 Everything is undone exactly when the banners should be shown again. Every game-memory access is exception-guarded.
 
-All game addresses and offsets are found at startup from code signatures, never hard-coded. If a required
-signature doesn't match (for example after a game update), the plugin does nothing and prints
-`[Dynamic Banners] INACTIVE` in the console. It never guesses.
+All game addresses and offsets are found at startup from code signatures (identical in both games), never
+hard-coded. If a required signature doesn't match (for example after a game update), the plugin does nothing and
+prints `[Dynamic Banners] INACTIVE` in the console. It never guesses.
 
 ## Building
 
@@ -76,8 +92,8 @@ Requirements: Visual Studio 2022 (x64 C++ tools). For the tools and tests: Pytho
 ```cmd
 git clone --recursive https://github.com/PicSoul/dynamic-banners-n-flags
 build.bat               :: bin\dynamic_banners.dll
-tests\run_tests.bat     :: unit tests + signature check against your installed game
-install.bat             :: copies the DLL (and a default ini if none exists) into ATS, found through Steam
+tests\run_tests.bat     :: unit tests + signature check against every installed game
+install.bat             :: copies the DLL into every installed game (ATS and/or ETS2), found through Steam
 package.bat             :: dist\Dynamic-Banners-N-Flags-v<version>.zip for a release
 ```
 
@@ -85,10 +101,10 @@ The version lives in `include\version.h`.
 
 ## After a game update
 
-1. Run **`tools\update_check.bat`**. It finds ATS through Steam, reads the signatures built into the installed
-   `dynamic_banners.dll`, and checks each one against the new `amtrucks.exe`.
+1. Run **`tools\update_check.bat`**. It finds ATS and ETS2 through Steam, reads the signatures built into each
+   game's installed `dynamic_banners.dll`, and checks them against that game's new executable.
 2. If something is reported as BROKEN, run **`tools\update_check.bat --write`**. It searches the new executable for
-   the moved code and writes repaired signatures into the installed `dynamic_banners.ini`, stamped with the game
+   the moved code and writes repaired signatures into that game's `dynamic_banners.ini`, stamped with the game
    build they're for (a backup is kept). No recompiling is needed.
 
    Overrides only apply to that exact game build, so an old ini can never break a newer DLL. To make a repair

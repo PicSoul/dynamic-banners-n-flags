@@ -54,8 +54,9 @@ public:
 
     // Loads the ini; missing keys keep their built-in defaults. Writes a default file (user settings only)
     // if none exists. [Signatures] / [Layout] overrides apply only if [Signatures] GameBuild == game_build.
-    bool Load(const std::wstring& ini_path, const std::string& game_build);
-    void SaveDefault(const std::wstring& ini_path);
+    // ets2: use Euro Truck Simulator 2 defaults (its trucks have no oversize banners or warning flags).
+    bool Load(const std::wstring& ini_path, const std::string& game_build, bool ets2 = false);
+    void SaveDefault(const std::wstring& ini_path, bool ets2 = false);
 
     const ModConfig& GetConfig() const { return config_; }
 

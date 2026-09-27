@@ -1,10 +1,11 @@
 """
 Dynamic Banners-N-Flags: game update checker / signature repair tool.
 
-After an ATS update, run:   tools\\update_check.bat            (check only)
+After a game update, run:   tools\\update_check.bat            (check only)
                             tools\\update_check.bat --write    (also repair the installed ini)
 
-For every signature in the ini it checks that the pattern matches exactly once in amtrucks.exe and that the
+Every installed SCS truck game (American Truck Simulator, Euro Truck Simulator 2) is checked.
+For every signature it checks that the pattern matches exactly once in the game executable and that the
 values read from it are plausible. If a signature no longer matches, it looks for the most similar code in the
 new executable (usually the game was recompiled and a few bytes moved), proposes a repaired signature and, with
 --write, stores it in the ini (a backup is kept). The plugin reads its signatures from the ini, so repairs need
@@ -22,11 +23,12 @@ import shutil
 import struct
 import sys
 
-ATS_EXE_IN_LIBRARY = os.path.join('steamapps', 'common', 'American Truck Simulator', 'bin', 'win_x64', 'amtrucks.exe')
+GAMES = [('ATS', os.path.join('steamapps', 'common', 'American Truck Simulator', 'bin', 'win_x64', 'amtrucks.exe')),
+         ('ETS2', os.path.join('steamapps', 'common', 'Euro Truck Simulator 2', 'bin', 'win_x64', 'eurotrucks2.exe'))]
 
 
-def find_ats_exe():
-    """Locate amtrucks.exe through Steam's registry entry and library list. Returns None if not found."""
+def find_game_exes():
+    """Installed SCS truck games found through Steam's registry entry and library list: [(id, exe path)]."""
     roots = []
     try:
         import winreg
@@ -51,11 +53,14 @@ def find_ats_exe():
         if os.path.exists(vdf):
             libraries += [p.replace('\\\\', '\\') for p in
                           re.findall(r'"path"\s+"([^"]+)"', open(vdf, encoding='utf-8', errors='replace').read())]
-    for lib in libraries:
-        exe = os.path.join(lib, ATS_EXE_IN_LIBRARY)
-        if os.path.exists(exe):
-            return os.path.normpath(exe)
-    return None
+    found = []
+    for game, rel in GAMES:
+        for lib in libraries:
+            exe = os.path.join(lib, rel)
+            if os.path.exists(exe):
+                found.append((game, os.path.normpath(exe)))
+                break
+    return found
 
 # Operand positions inside each signature; they must match src/game_layout.cpp.
 # kind: 'rip' = rip-relative disp32 to a global (instruction length 7), 'off' = struct offset, 'fn' = function start
@@ -360,24 +365,35 @@ def write_overrides(ini_path, build_id, sigs):
 def main():
     here = os.path.dirname(os.path.abspath(__file__))
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument('--exe', default=None, help='path to amtrucks.exe (default: found through Steam)')
-    ap.add_argument('--print-exe', action='store_true', help='only print the detected amtrucks.exe path')
-    ap.add_argument('--ini', default=None, help='dynamic_banners.ini (default: the installed one)')
+    ap.add_argument('--exe', default=None, help='check only this game executable (default: all games found through Steam)')
+    ap.add_argument('--print-exe', action='store_true', help='only print the detected game executables, one per line')
+    ap.add_argument('--ini', default=None, help='dynamic_banners.ini (default: the installed one of each game)')
     ap.add_argument('--dll', default=None, help='dynamic_banners.dll to read built-in signatures from '
-                                                '(default: the installed one)')
+                                                '(default: the installed one of each game)')
     ap.add_argument('--write', action='store_true', help='store repaired signatures in the ini (keeps a backup)')
     args = ap.parse_args()
-    args.exe = args.exe or find_ats_exe()
+    games = [('custom', args.exe)] if args.exe else find_game_exes()
     if args.print_exe:
-        print(args.exe or '')
-        return 0 if args.exe else 2
-    if not args.exe or not os.path.exists(args.exe):
-        print('Could not find amtrucks.exe through Steam. Pass it with --exe "<path>\\amtrucks.exe".')
+        for _, exe in games:
+            print(exe)
+        return 0 if games else 2
+    if not games or not all(os.path.exists(exe) for _, exe in games):
+        print('Could not find American Truck Simulator or Euro Truck Simulator 2 through Steam. '
+              'Pass the game executable with --exe "<path>\\amtrucks.exe" (or eurotrucks2.exe).')
         return 2
+    worst = 0
+    for i, (game, exe_path) in enumerate(games):
+        if i:
+            print('\n' + '=' * 110 + '\n')
+        worst = max(worst, check_game(args, here, exe_path))
+    return worst
 
-    plugins = os.path.join(os.path.dirname(args.exe), 'plugins')
+
+def check_game(args, here, exe_path):
+    """Checks (and with --write repairs) one game. Returns 0 OK, 1 needs attention, 2 plugin inactive."""
+    plugins = os.path.join(os.path.dirname(exe_path), 'plugins')
     ini_path = args.ini or os.path.join(plugins, 'dynamic_banners.ini')
-    exe = Exe(args.exe)
+    exe = Exe(exe_path)
     builtins, builtins_from = builtin_signatures(
         [args.dll, os.path.join(plugins, 'dynamic_banners.dll'), os.path.join(here, '..', 'bin', 'dynamic_banners.dll')],
         os.path.join(here, '..', 'src', 'config_manager.cpp'))
@@ -394,9 +410,9 @@ def main():
                  if k in SIGNATURES and v.strip()}
     use_overrides = bool(ini_build) and ini_build == exe.build_id
 
-    print(f'Executable : {args.exe}')
+    print(f'Executable : {exe_path}')
     print(f'             build {exe.build_id}, modified '
-          f'{datetime.datetime.fromtimestamp(os.path.getmtime(args.exe)):%Y-%m-%d %H:%M}')
+          f'{datetime.datetime.fromtimestamp(os.path.getmtime(exe_path)):%Y-%m-%d %H:%M}')
     print(f'Built-ins  : {os.path.abspath(builtins_from)}')
     print(f'Config     : {os.path.abspath(ini_path)}' + ('' if os.path.exists(ini_path) else ' (does not exist)'))
     if overrides and not use_overrides:

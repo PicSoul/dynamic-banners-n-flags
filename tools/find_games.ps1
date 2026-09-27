@@ -1,5 +1,5 @@
-# Prints American Truck Simulator's bin\win_x64 folder, found through Steam's registry entry and library list.
-# Prints nothing if it cannot be found.
+# Lists installed SCS truck games, found through Steam's registry entry and library list.
+# One line per game: <ATS|ETS2>|<game>\bin\win_x64
 $roots = @()
 foreach ($key in 'HKCU:\Software\Valve\Steam', 'HKLM:\SOFTWARE\WOW6432Node\Valve\Steam') {
     $item = Get-ItemProperty $key -ErrorAction SilentlyContinue
@@ -19,7 +19,13 @@ foreach ($root in $roots) {
     }
 }
 
-foreach ($lib in $libraries) {
-    $dir = Join-Path $lib 'steamapps\common\American Truck Simulator\bin\win_x64'
-    if (Test-Path (Join-Path $dir 'amtrucks.exe')) { $dir; break }
+$games = @(
+    @{ Id = 'ATS';  Folder = 'American Truck Simulator'; Exe = 'amtrucks.exe' },
+    @{ Id = 'ETS2'; Folder = 'Euro Truck Simulator 2';   Exe = 'eurotrucks2.exe' }
+)
+foreach ($g in $games) {
+    foreach ($lib in ($libraries | Select-Object -Unique)) {
+        $dir = Join-Path $lib ('steamapps\common\' + $g.Folder + '\bin\win_x64')
+        if (Test-Path (Join-Path $dir $g.Exe)) { $g.Id + '|' + (Resolve-Path $dir).Path; break }
+    }
 }

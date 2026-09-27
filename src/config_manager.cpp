@@ -8,7 +8,10 @@
 
 namespace DynamicBanners {
 
-static const char* DEFAULT_SLOTS = "f_banner, flag_f_l, flag_f_r, r_banner, flag_r_l, flag_r_r";
+// Default slots per game. ETS2 trucks have no oversize banners or warning flags; its trailers' rear signs
+// (wide/long vehicle, TIR) share the r_banner slot.
+static const char* DEFAULT_SLOTS_ATS = "f_banner, flag_f_l, flag_f_r, r_banner, flag_r_l, flag_r_r";
+static const char* DEFAULT_SLOTS_ETS2 = "r_banner";
 
 // Built-in signatures for ATS 1.61. Each literal carries a "DBSIG:<key>=" marker so tools/update_check.py can read
 // the signatures a DLL was built with straight from dynamic_banners.dll; the marker is stripped before use.
@@ -89,7 +92,7 @@ static bool ReadBool(const wchar_t* section, const wchar_t* key, bool def, const
     return GetPrivateProfileIntW(section, key, def ? 1 : 0, path.c_str()) != 0;
 }
 
-void ConfigManager::SaveDefault(const std::wstring& ini_path) {
+void ConfigManager::SaveDefault(const std::wstring& ini_path, bool ets2) {
     std::ofstream out(ini_path, std::ios::out);
     if (!out.is_open()) return;
 
@@ -111,7 +114,7 @@ void ConfigManager::SaveDefault(const std::wstring& ini_path) {
     out << "UseClothHook = 1\n\n";
     out << "[Targets]\n";
     out << "; Accessory slot names (the last part of an accessory's unit name, e.g. oversize.scs.lowboy.r_banner)\n";
-    out << "Slots = " << DEFAULT_SLOTS << "\n";
+    out << "Slots = " << (ets2 ? DEFAULT_SLOTS_ETS2 : DEFAULT_SLOTS_ATS) << "\n";
     out << "; 1 = also toggle beacon units (roof/chassis beacons, trailer beacon bars and strobes) with the beacons.\n";
     out << ";     Only accessories whose model actually has beacon lights are toggled.\n";
     out << "HideBeacons = 1\n";
@@ -119,9 +122,9 @@ void ConfigManager::SaveDefault(const std::wstring& ini_path) {
     out << "BeaconSlots = " << DEFAULT_BEACON_SLOTS << "\n";
 }
 
-bool ConfigManager::Load(const std::wstring& ini_path, const std::string& game_build) {
+bool ConfigManager::Load(const std::wstring& ini_path, const std::string& game_build, bool ets2) {
     if (GetFileAttributesW(ini_path.c_str()) == INVALID_FILE_ATTRIBUTES) {
-        SaveDefault(ini_path);
+        SaveDefault(ini_path, ets2);
     }
 
     config_.enabled = ReadBool(L"General", L"Enabled", true, ini_path);
@@ -131,7 +134,7 @@ bool ConfigManager::Load(const std::wstring& ini_path, const std::string& game_b
     config_.show_while_paused = ReadBool(L"General", L"ShowWhilePaused", false, ini_path);
     config_.affect_trailers = ReadBool(L"General", L"AffectTrailers", true, ini_path);
     config_.use_cloth_hook = ReadBool(L"General", L"UseClothHook", true, ini_path);
-    config_.target_slots = SplitCommaSeparated(ReadString(L"Targets", L"Slots", DEFAULT_SLOTS, ini_path));
+    config_.target_slots = SplitCommaSeparated(ReadString(L"Targets", L"Slots", ets2 ? DEFAULT_SLOTS_ETS2 : DEFAULT_SLOTS_ATS, ini_path));
     config_.hide_beacons = ReadBool(L"Targets", L"HideBeacons", true, ini_path);
     config_.beacon_slots = SplitCommaSeparated(ReadString(L"Targets", L"BeaconSlots", DEFAULT_BEACON_SLOTS, ini_path));
 

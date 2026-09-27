@@ -372,6 +372,15 @@ static void TestOverrideGating() {
     CHECK(cm.GetConfig().signature_overrides == 0);
     CHECK(cm.GetConfig().invert_beacon);                       // user settings always apply
     DeleteFileW(path);
+
+    // Per-game defaults: ETS2 trucks have no oversize banners or warning flags.
+    cm.Load(L"bin\\test_ets2_defaults.ini", "X", true);
+    CHECK(cm.GetConfig().target_slots.size() == 1 && cm.GetConfig().target_slots[0] == "r_banner");
+    CHECK(cm.GetConfig().hide_beacons && cm.GetConfig().beacon_slots.size() == 3);
+    DeleteFileW(L"bin\\test_ets2_defaults.ini");
+    cm.Load(L"bin\\test_ats_defaults.ini", "X", false);
+    CHECK(cm.GetConfig().target_slots.size() == 6);
+    DeleteFileW(L"bin\\test_ats_defaults.ini");
 }
 
 int main(int argc, char** argv) {
@@ -380,8 +389,8 @@ int main(int argc, char** argv) {
     ConfigManager::Instance().Load(L"bin\\test_config.ini", "TESTBUILD");   // written with defaults if missing
     TestTokens();
     TestScanBuffer();
-    if (argc > 1 && argv[1][0]) TestSignaturesAgainstExe(argv[1]);
-    else printf("[3] Signatures against amtrucks.exe\n    SKIPPED: no game path given (run_tests.bat finds it through Steam)\n");
+    if (argc > 1) for (int i = 1; i < argc; ++i) TestSignaturesAgainstExe(argv[i]);
+    else printf("[3] Signatures against the game executables\n    SKIPPED: no game path given (run_tests.bat finds them through Steam)\n");
     TestController(false);
     TestController(true);
     TestBeacons();

@@ -2,7 +2,7 @@
 setlocal enabledelayedexpansion
 
 echo ======================================================================
-echo   Building SCS Dynamic Banners-N-Flags (x64 telemetry plugin)
+echo   Building Dynamic Banners-N-Flags (x64 telemetry plugin for ATS and ETS2)
 echo ======================================================================
 
 set "VS_PATH=C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvarsall.bat"
@@ -35,8 +35,6 @@ if %errorlevel% neq 0 (
     exit /b %errorlevel%
 )
 
-copy /Y "config\dynamic_banners.ini" "bin\dynamic_banners.ini" >nul
-
 echo ======================================================================
-echo   BUILD SUCCESSFUL: bin\dynamic_banners.dll + bin\dynamic_banners.ini
+echo   BUILD SUCCESSFUL: bin\dynamic_banners.dll
 echo ======================================================================
