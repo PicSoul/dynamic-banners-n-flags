@@ -133,7 +133,6 @@ void TelemetryBridge::OnFrameEnd() {
     }
     const ModConfig& cfg = ConfigManager::Instance().GetConfig();
     bool visible = beacon_active_ != cfg.invert_beacon;
-    if (paused_ && cfg.show_while_paused) visible = true;
     // Without the hook, flag cloth must be back in the game's patch list whenever it may rebuild vehicles.
     vc.Update(!visible, !cloth_hook_ && paused_);
 }

@@ -105,8 +105,6 @@ void ConfigManager::SaveDefault(const std::wstring& ini_path, bool ets2) {
     out << "LogLevel = 3\n";
     out << "; 0 = shown while beacons are ON, hidden while OFF. 1 = the opposite.\n";
     out << "InvertBeacon = 0\n";
-    out << "; 1 = show everything while the game is paused (menus, service shop, loading)\n";
-    out << "ShowWhilePaused = 0\n";
     out << "; 1 = also toggle banners/flags on trailers attached to your truck\n";
     out << "AffectTrailers = 1\n";
     out << "; 1 = hide flag cloth with a small draw hook (recommended). 0 = no code hooks at all, but flag cloth\n";
@@ -131,7 +129,6 @@ bool ConfigManager::Load(const std::wstring& ini_path, const std::string& game_b
     int level = GetPrivateProfileIntW(L"General", L"LogLevel", 3, ini_path.c_str());
     config_.log_level = static_cast<LogLevel>(std::clamp(level, 0, 5));
     config_.invert_beacon = ReadBool(L"General", L"InvertBeacon", false, ini_path);
-    config_.show_while_paused = ReadBool(L"General", L"ShowWhilePaused", false, ini_path);
     config_.affect_trailers = ReadBool(L"General", L"AffectTrailers", true, ini_path);
     config_.use_cloth_hook = ReadBool(L"General", L"UseClothHook", true, ini_path);
     config_.target_slots = SplitCommaSeparated(ReadString(L"Targets", L"Slots", ets2 ? DEFAULT_SLOTS_ETS2 : DEFAULT_SLOTS_ATS, ini_path));
@@ -165,8 +162,8 @@ bool ConfigManager::Load(const std::wstring& ini_path, const std::string& game_b
     }
     config_.max_trailers = std::min<uint32_t>(config_.max_trailers, 32);
 
-    LOG_INFO("Config: Enabled=%d InvertBeacon=%d ShowWhilePaused=%d AffectTrailers=%d UseClothHook=%d, %zu target slots",
-        config_.enabled, config_.invert_beacon, config_.show_while_paused, config_.affect_trailers,
+    LOG_INFO("Config: Enabled=%d InvertBeacon=%d AffectTrailers=%d UseClothHook=%d, %zu target slots",
+        config_.enabled, config_.invert_beacon, config_.affect_trailers,
         config_.use_cloth_hook, config_.target_slots.size());
     if (build_matches) {
         LOG_INFO("Config: game build %s - using %d signature/layout override(s) from the ini",

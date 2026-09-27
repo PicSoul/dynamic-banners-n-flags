@@ -34,7 +34,7 @@ otherwise add their slot names in the ini.
    In Steam: right-click the game > Manage > Browse local files > `bin` > `win_x64`. Put a copy in both games if
    you play both.
 2. Start the game and accept the "SDK plugins" prompt.
-3. Open the console (`~`). You should see `[Dynamic Banners] v1.2.0 active ...`.
+3. Open the console (`~`). You should see `[Dynamic Banners] v1.2.1 active ...`.
 
 To uninstall, delete `dynamic_banners.dll` (and `dynamic_banners.ini` / `.log`) from the `plugins` folder.
 
@@ -59,7 +59,6 @@ defaults.
 | `Enabled` | 1 | Turns the plugin on or off |
 | `LogLevel` | 3 | 1 = errors only … 4 = debug (logs to `dynamic_banners.log`) |
 | `InvertBeacon` | 0 | 1 = hide while the beacons are ON instead |
-| `ShowWhilePaused` | 0 | 1 = show everything while the game is paused |
 | `AffectTrailers` | 1 | Also toggle trailers hooked up to your truck |
 | `UseClothHook` | 1 | Hide flag cloth with a small draw hook (0 = no code hooks at all, but then flag cloth has to be shown while paused) |
 | `Slots` | per game, see above | Accessory slot names to toggle |

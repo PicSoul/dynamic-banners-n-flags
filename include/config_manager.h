@@ -12,7 +12,6 @@ struct ModConfig {
     bool enabled = true;
     LogLevel log_level = LogLevel::Info;
     bool invert_beacon = false;       // false: shown while beacons are ON, hidden while OFF
-    bool show_while_paused = false;   // show everything while the game is paused (menus, shops, loading)
     bool affect_trailers = true;
     bool use_cloth_hook = true;       // hide flag cloth with the draw hook (else: patch-list method, shown while paused)
 
