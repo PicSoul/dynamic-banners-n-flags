@@ -1,14 +1,16 @@
 # Dynamic Banners-N-Flags
 
-A plugin for **American Truck Simulator** and **Euro Truck Simulator 2** that shows your **oversize banners, warning
-flags and beacon units only while your beacons are on**. It works on your own truck and on every trailer hooked up
-to it.
+A plugin for **American Truck Simulator** and **Euro Truck Simulator 2** that shows your **oversize banners and
+warning flags only while your beacons are on**. It works on your own truck and on every trailer hooked up to it.
 
 ![Switching the beacons on and off shows and hides the oversize banner, warning flags, roof beacon and the trailer's beacon bar](docs/demo.gif)
 
-- Turn the beacons **on** and your banners, flags and beacon units appear. Turn them **off** and they disappear.
-- Beacon units include roof and chassis beacons, and trailer beacon bars and strobe bars. Only accessories whose
-  3D model actually carries beacon lights are toggled, so bumpers, doors and rear frames never disappear.
+*Recorded with the optional beacon units setting (`HideBeacons = 1`) turned on.*
+
+- Turn the beacons **on** and your banners and flags appear. Turn them **off** and they disappear.
+- **Optional:** set `HideBeacons = 1` to make the beacon units themselves (roof and chassis beacons, trailer beacon
+  bars and strobe bars) appear and disappear too. Only accessories whose 3D model actually carries beacon lights
+  are toggled, so bumpers, doors and rear frames never disappear.
 - Only **your own** truck and trailers are affected, never AI traffic or other players in multiplayer.
 - The same DLL works in both games. It detects which game loaded it and uses that game's defaults.
 
@@ -19,7 +21,7 @@ to it.
 | | American Truck Simulator | Euro Truck Simulator 2 |
 |---|---|---|
 | Banners and flags (`Slots`) | truck `f_banner`, `flag_f_l`, `flag_f_r`; trailer `r_banner`, `flag_r_l`, `flag_r_r` | trailer `r_banner` (wide/long vehicle, TIR plates) |
-| Beacon units (`BeaconSlots`) | `beacon`, `chs_beacon`, `rear_body` | `beacon`, `chs_beacon`, `rear_body` |
+| Beacon units (`BeaconSlots`, only with `HideBeacons = 1`) | `beacon`, `chs_beacon`, `rear_body` | `beacon`, `chs_beacon`, `rear_body` |
 
 ETS2 trucks have no oversize banners or warning flags. Their `flag_l` / `flag_r` slots hold national flags, which
 keep showing unless you add them to `Slots`. Modded trucks and trailers work too if they use the same slot names;
@@ -34,13 +36,13 @@ otherwise add their slot names in the ini.
    In Steam: right-click the game > Manage > Browse local files > `bin` > `win_x64`. Put a copy in both games if
    you play both.
 2. Start the game and accept the "SDK plugins" prompt.
-3. Open the console (`~`). You should see `[Dynamic Banners] v1.2.1 active ...`.
+3. Open the console (`~`). You should see `[Dynamic Banners] v1.3.0 active ...`.
 
 To uninstall, delete `dynamic_banners.dll` (and `dynamic_banners.ini` / `.log`) from the `plugins` folder.
 
 ## Where the toggle applies
 
-| Scene | Banners, flags and beacon units |
+| Scene | Banners and flags (and beacon units, if enabled) |
 |---|---|
 | Driving, photo mode | Follow the beacons |
 | Pause menu, service center | Always shown |
@@ -62,7 +64,7 @@ defaults.
 | `AffectTrailers` | 1 | Also toggle trailers hooked up to your truck |
 | `UseClothHook` | 1 | Hide flag cloth with a small draw hook (0 = no code hooks at all, but then flag cloth has to be shown while paused) |
 | `Slots` | per game, see above | Accessory slot names to toggle |
-| `HideBeacons` | 1 | Also toggle beacon units |
+| `HideBeacons` | 0 | 1 = also toggle beacon units (roof/chassis beacons, trailer beacon and strobe bars) |
 | `BeaconSlots` | `beacon, chs_beacon, rear_body` | Slots checked for beacon units (an accessory there is toggled only if its model has beacon lights) |
 
 ## How it works
@@ -76,7 +78,7 @@ your truck and to each **hooked-up** trailer, and then:
 | Banners and the static part of flags | The accessory's visibility mask is set to 0 (a data write) |
 | Truck accessories baked into the merged truck model | The truck's merged model is switched off while hidden (a data write) |
 | Flag cloth (physics simulated) | One small hook on the cloth draw function skips your hidden flags. The cloth keeps simulating, so it waves naturally when shown again. |
-| Beacon units | Same visibility mask as banners. An accessory counts as a beacon unit when its model has a light the game classifies as a beacon (class `flare_vehicle`, `light_type` beacon), read from the game's own reflection data by name. |
+| Beacon units (`HideBeacons = 1`) | Same visibility mask as banners. An accessory counts as a beacon unit when its model has a light the game classifies as a beacon (class `flare_vehicle`, `light_type` beacon), read from the game's own reflection data by name. |
 
 Everything is undone exactly when the banners should be shown again. Every game-memory access is exception-guarded.
 

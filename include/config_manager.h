@@ -18,7 +18,7 @@ struct ModConfig {
     std::vector<std::string> target_slots;  // accessory slot names, e.g. f_banner
 
     // Beacon accessories: in these slots, an accessory is toggled only if its model has beacon lights.
-    bool hide_beacons = true;
+    bool hide_beacons = false;
     std::vector<std::string> beacon_slots;
 
     // Signatures in effect (IDA style, '?' wildcards). Each must match exactly once in amtrucks.exe.

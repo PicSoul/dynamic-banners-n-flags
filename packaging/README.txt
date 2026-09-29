@@ -3,14 +3,16 @@ for American Truck Simulator and Euro Truck Simulator 2 ({GAME_VERSION})
 https://github.com/PicSoul/dynamic-banners-n-flags
 ====================================================================
 
-Your truck's oversize banners, warning flags and beacon units (and those on
-your attached trailers) are only shown while your beacons are on. Turn the
-beacons off and they disappear; turn them on and they come back.
+Your truck's oversize banners and warning flags (and those on your attached
+trailers) are only shown while your beacons are on. Turn the beacons off and
+they disappear; turn them on and they come back.
 
-Beacon units are roof/chassis beacons and trailer beacon bars and strobe bars.
-Only accessories whose 3D model actually has beacon lights are toggled, so
-bumpers, doors and rear frames never disappear. (Bumpers and grills with
-built-in strobes keep their lamp housings; the strobes are simply off.)
+Optional: set HideBeacons = 1 in dynamic_banners.ini to make the beacon units
+themselves (roof/chassis beacons, trailer beacon bars and strobe bars) appear
+and disappear too. Only accessories whose 3D model actually has beacon lights
+are toggled, so bumpers, doors and rear frames never disappear. (Bumpers and
+grills with built-in strobes keep their lamp housings; the strobes are simply
+off.)
 
 Only YOUR truck and trailers are affected - never AI traffic or other players.
 
@@ -29,23 +31,24 @@ INSTALL
 2. Start the game. It asks whether to allow "SDK plugins" - accept.
 
 3. Press ~ to open the console. You should see:
-     [Dynamic Banners] v{VERSION} active - banners/flags/beacon units on your
-     truck and trailers follow your beacons
+     [Dynamic Banners] v{VERSION} active - banners/flags on your truck and
+     trailers follow your beacons
 
 The plugin creates dynamic_banners.ini next to itself on first start, with the
 right defaults for that game. You can edit it to change the behaviour (for
 example InvertBeacon = 1 to hide them while the beacons are ON instead, or
-HideBeacons = 0 to keep beacon units always visible). Delete it to go back to
-the defaults.
+HideBeacons = 1 to toggle the beacon units too). Delete it to go back to the
+defaults.
 
 
 WHAT TOGGLES
 ------------
   American Truck Simulator: front oversize banner and warning flags (trucks),
-    rear banners and warning flags (trailers), and beacon units.
-  Euro Truck Simulator 2: trailer rear signs (wide/long vehicle, TIR) and
-    beacon units. ETS2 trucks have no oversize banners or warning flags; their
-    national flags keep showing unless you add flag_l, flag_r to Slots.
+    rear banners and warning flags (trailers).
+  Euro Truck Simulator 2: trailer rear signs (wide/long vehicle, TIR). ETS2
+    trucks have no oversize banners or warning flags; their national flags
+    keep showing unless you add flag_l, flag_r to Slots.
+  Both games, with HideBeacons = 1: beacon units as well.
 
 Modded trucks/trailers that use the same accessory slot names work too.
 

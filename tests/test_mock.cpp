@@ -376,7 +376,7 @@ static void TestOverrideGating() {
     // Per-game defaults: ETS2 trucks have no oversize banners or warning flags.
     cm.Load(L"bin\\test_ets2_defaults.ini", "X", true);
     CHECK(cm.GetConfig().target_slots.size() == 1 && cm.GetConfig().target_slots[0] == "r_banner");
-    CHECK(cm.GetConfig().hide_beacons && cm.GetConfig().beacon_slots.size() == 3);
+    CHECK(!cm.GetConfig().hide_beacons && cm.GetConfig().beacon_slots.size() == 3);   // beacon units are opt-in
     DeleteFileW(L"bin\\test_ets2_defaults.ini");
     cm.Load(L"bin\\test_ats_defaults.ini", "X", false);
     CHECK(cm.GetConfig().target_slots.size() == 6);

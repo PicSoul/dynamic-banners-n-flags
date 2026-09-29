@@ -115,7 +115,7 @@ void ConfigManager::SaveDefault(const std::wstring& ini_path, bool ets2) {
     out << "Slots = " << (ets2 ? DEFAULT_SLOTS_ETS2 : DEFAULT_SLOTS_ATS) << "\n";
     out << "; 1 = also toggle beacon units (roof/chassis beacons, trailer beacon bars and strobes) with the beacons.\n";
     out << ";     Only accessories whose model actually has beacon lights are toggled.\n";
-    out << "HideBeacons = 1\n";
+    out << "HideBeacons = 0\n";
     out << "; Slots checked for beacon units\n";
     out << "BeaconSlots = " << DEFAULT_BEACON_SLOTS << "\n";
 }
@@ -132,7 +132,7 @@ bool ConfigManager::Load(const std::wstring& ini_path, const std::string& game_b
     config_.affect_trailers = ReadBool(L"General", L"AffectTrailers", true, ini_path);
     config_.use_cloth_hook = ReadBool(L"General", L"UseClothHook", true, ini_path);
     config_.target_slots = SplitCommaSeparated(ReadString(L"Targets", L"Slots", ets2 ? DEFAULT_SLOTS_ETS2 : DEFAULT_SLOTS_ATS, ini_path));
-    config_.hide_beacons = ReadBool(L"Targets", L"HideBeacons", true, ini_path);
+    config_.hide_beacons = ReadBool(L"Targets", L"HideBeacons", false, ini_path);
     config_.beacon_slots = SplitCommaSeparated(ReadString(L"Targets", L"BeaconSlots", DEFAULT_BEACON_SLOTS, ini_path));
 
     // Built-in signatures and layout first.
