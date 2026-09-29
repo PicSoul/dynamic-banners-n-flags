@@ -10,7 +10,7 @@ namespace DynamicBanners {
 // A signature plus where to read each value from a match. See config/dynamic_banners.ini for the format.
 struct ModConfig {
     bool enabled = true;
-    LogLevel log_level = LogLevel::Info;
+    LogLevel log_level = LogLevel::None;
     bool invert_beacon = false;       // false: shown while beacons are ON, hidden while OFF
     bool affect_trailers = true;
     bool use_cloth_hook = true;       // hide flag cloth with the draw hook (else: patch-list method, shown while paused)

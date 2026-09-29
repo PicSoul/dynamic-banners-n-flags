@@ -59,7 +59,7 @@ defaults.
 | Key | Default | Meaning |
 |---|---|---|
 | `Enabled` | 1 | Turns the plugin on or off |
-| `LogLevel` | 3 | 1 = errors only … 4 = debug (logs to `dynamic_banners.log`) |
+| `LogLevel` | 0 | 0 = no log file. For troubleshooting: 1 = errors only … 4 = debug (logs to `dynamic_banners.log`) |
 | `InvertBeacon` | 0 | 1 = hide while the beacons are ON instead |
 | `AffectTrailers` | 1 | Also toggle trailers hooked up to your truck |
 | `UseClothHook` | 1 | Hide flag cloth with a small draw hook (0 = no code hooks at all, but then flag cloth has to be shown while paused) |

@@ -101,8 +101,8 @@ void ConfigManager::SaveDefault(const std::wstring& ini_path, bool ets2) {
     out << "; This file is optional: delete it to go back to the defaults.\n\n";
     out << "[General]\n";
     out << "Enabled = 1\n";
-    out << "; 1=Error, 2=Warn, 3=Info, 4=Debug, 5=Trace\n";
-    out << "LogLevel = 3\n";
+    out << "; 0 = no log file (default). For troubleshooting: 1=Error, 2=Warn, 3=Info, 4=Debug, 5=Trace\n";
+    out << "LogLevel = 0\n";
     out << "; 0 = shown while beacons are ON, hidden while OFF. 1 = the opposite.\n";
     out << "InvertBeacon = 0\n";
     out << "; 1 = also toggle banners/flags on trailers attached to your truck\n";
@@ -126,8 +126,9 @@ bool ConfigManager::Load(const std::wstring& ini_path, const std::string& game_b
     }
 
     config_.enabled = ReadBool(L"General", L"Enabled", true, ini_path);
-    int level = GetPrivateProfileIntW(L"General", L"LogLevel", 3, ini_path.c_str());
+    int level = GetPrivateProfileIntW(L"General", L"LogLevel", 0, ini_path.c_str());
     config_.log_level = static_cast<LogLevel>(std::clamp(level, 0, 5));
+    Logger::Instance().SetLevel(config_.log_level);
     config_.invert_beacon = ReadBool(L"General", L"InvertBeacon", false, ini_path);
     config_.affect_trailers = ReadBool(L"General", L"AffectTrailers", true, ini_path);
     config_.use_cloth_hook = ReadBool(L"General", L"UseClothHook", true, ini_path);

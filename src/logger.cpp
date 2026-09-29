@@ -9,10 +9,15 @@ namespace DynamicBanners {
 
 void Logger::Initialize(const std::wstring& log_dir, LogLevel level) {
     std::lock_guard<std::mutex> lock(mutex_);
-    if (initialized_) return;
-
+    log_dir_ = log_dir;
     log_level_ = level;
-    std::wstring log_path = log_dir + L"\\dynamic_banners.log";
+}
+
+// Called with mutex_ held, on the first message that passes the level.
+void Logger::OpenFile() {
+    if (initialized_ || log_dir_.empty()) return;
+
+    std::wstring log_path = log_dir_ + L"\\dynamic_banners.log";
     log_file_.open(log_path, std::ios::out | std::ios::trunc);
 
     if (log_file_.is_open()) {
@@ -42,6 +47,7 @@ void Logger::Shutdown() {
         log_file_.close();
     }
     initialized_ = false;
+    log_dir_.clear();
 }
 
 void Logger::Log(LogLevel level, const char* format, ...) {
@@ -55,6 +61,7 @@ void Logger::LogV(LogLevel level, const char* format, va_list args) {
     if (level > log_level_) return;
 
     std::lock_guard<std::mutex> lock(mutex_);
+    OpenFile();
     if (!initialized_ || !log_file_.is_open()) return;
 
     auto now = std::chrono::system_clock::now();

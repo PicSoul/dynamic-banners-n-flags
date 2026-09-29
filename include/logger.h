@@ -24,7 +24,9 @@ public:
         return instance;
     }
 
-    void Initialize(const std::wstring& log_dir, LogLevel level = LogLevel::Debug);
+    // Nothing is written (and no file is created) until a message passes the level; LogLevel::None never
+    // creates dynamic_banners.log.
+    void Initialize(const std::wstring& log_dir, LogLevel level = LogLevel::None);
     void Shutdown();
 
     void Log(LogLevel level, const char* format, ...);
@@ -34,12 +36,14 @@ public:
     LogLevel GetLevel() const { return log_level_; }
 
 private:
-    Logger() : log_level_(LogLevel::Debug), initialized_(false) {}
+    Logger() : log_level_(LogLevel::None), initialized_(false) {}
+    void OpenFile();
     ~Logger() { Shutdown(); }
 
     Logger(const Logger&) = delete;
     Logger& operator=(const Logger&) = delete;
 
+    std::wstring log_dir_;
     std::ofstream log_file_;
     std::mutex mutex_;
     LogLevel log_level_;

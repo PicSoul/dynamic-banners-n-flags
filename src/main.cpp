@@ -31,17 +31,17 @@ BOOL APIENTRY DllMain(HMODULE module, DWORD reason, LPVOID) {
     if (reason == DLL_PROCESS_ATTACH) {
         DisableThreadLibraryCalls(module);
         std::wstring dir = GetModuleDirectory(module);
-        DynamicBanners::Logger::Instance().Initialize(dir, DynamicBanners::LogLevel::Info);
+        DynamicBanners::Logger::Instance().Initialize(dir);
 
         uintptr_t base = reinterpret_cast<uintptr_t>(GetModuleHandleW(nullptr));
         auto* nt = reinterpret_cast<IMAGE_NT_HEADERS*>(base + reinterpret_cast<IMAGE_DOS_HEADER*>(base)->e_lfanew);
         DynamicBanners::SetModuleRange(base, base + nt->OptionalHeader.SizeOfImage);
 
         DynamicBanners::Game game = DynamicBanners::DetectGame();
-        LOG_INFO("Game: %s", DynamicBanners::GameName(game));
+        // Load sets the log level from the ini before it logs anything.
         DynamicBanners::ConfigManager::Instance().Load(dir + L"\\dynamic_banners.ini", DynamicBanners::GameBuildId(nt),
                                                        game == DynamicBanners::Game::ETS2);
-        DynamicBanners::Logger::Instance().SetLevel(DynamicBanners::ConfigManager::Instance().GetConfig().log_level);
+        LOG_INFO("Game: %s", DynamicBanners::GameName(game));
     } else if (reason == DLL_PROCESS_DETACH) {
         DynamicBanners::ClothHook::Uninstall();
         DynamicBanners::Logger::Instance().Shutdown();
