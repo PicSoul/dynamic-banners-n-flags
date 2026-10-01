@@ -54,7 +54,8 @@ to break on game updates.
 ## Configuration (`dynamic_banners.ini`, optional)
 
 The plugin writes this file next to itself on first start, with that game's defaults. Delete it to go back to the
-defaults.
+defaults. After an update, new settings are added to your existing file automatically (your values are kept, and
+settings that no longer exist are removed).
 
 | Key | Default | Meaning |
 |---|---|---|

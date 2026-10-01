@@ -1,4 +1,5 @@
 #include "config_manager.h"
+#include "ini_upgrade.h"
 #include <algorithm>
 #include <sstream>
 #include <fstream>
@@ -92,10 +93,9 @@ static bool ReadBool(const wchar_t* section, const wchar_t* key, bool def, const
     return GetPrivateProfileIntW(section, key, def ? 1 : 0, path.c_str()) != 0;
 }
 
-void ConfigManager::SaveDefault(const std::wstring& ini_path, bool ets2) {
-    std::ofstream out(ini_path, std::ios::out);
-    if (!out.is_open()) return;
-
+// The default ini (user settings only). Also the template an older ini is brought up to date with.
+static std::string DefaultIni(bool ets2) {
+    std::ostringstream out;
     out << "; SCS Dynamic Banners-N-Flags\n";
     out << "; Shows oversize banners and flags on your own truck and attached trailers only while the beacons are on.\n";
     out << "; This file is optional: delete it to go back to the defaults.\n\n";
@@ -118,17 +118,53 @@ void ConfigManager::SaveDefault(const std::wstring& ini_path, bool ets2) {
     out << "HideBeacons = 0\n";
     out << "; Slots checked for beacon units\n";
     out << "BeaconSlots = " << DEFAULT_BEACON_SLOTS << "\n";
+    return out.str();
+}
+
+// Writes `text` to `path` through a temporary file, so a crash never leaves a half-written ini.
+static bool WriteFileAtomic(const std::wstring& path, const std::string& text) {
+    std::wstring tmp = path + L".tmp";
+    {
+        std::ofstream f(tmp, std::ios::binary | std::ios::trunc);
+        if (!f) return false;
+        for (char c : text) {  // Windows line endings, as the file always had
+            if (c == '\n') f << '\r';
+            f << c;
+        }
+        if (!f.flush()) return false;
+    }
+    if (MoveFileExW(tmp.c_str(), path.c_str(), MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) return true;
+    DeleteFileW(tmp.c_str());
+    return false;
+}
+
+void ConfigManager::SaveDefault(const std::wstring& ini_path, bool ets2) {
+    WriteFileAtomic(ini_path, DefaultIni(ets2));
 }
 
 bool ConfigManager::Load(const std::wstring& ini_path, const std::string& game_build, bool ets2) {
+    std::string ini_note;
     if (GetFileAttributesW(ini_path.c_str()) == INVALID_FILE_ATTRIBUTES) {
         SaveDefault(ini_path, ets2);
+    } else {
+        // An ini from an older version: add new settings, drop obsolete ones, keep the player's values.
+        // [Signatures] / [Layout] (written by the update tool) are kept as they are.
+        std::ifstream f(ini_path, std::ios::binary);
+        std::stringstream text;
+        text << f.rdbuf();
+        f.close();
+        std::string upgraded;
+        std::string changes = UpgradeIni(text.str(), DefaultIni(ets2), upgraded);
+        if (!changes.empty())
+            ini_note = WriteFileAtomic(ini_path, upgraded) ? "updated dynamic_banners.ini: " + changes
+                                                           : "could not update dynamic_banners.ini (" + changes + ")";
     }
 
     config_.enabled = ReadBool(L"General", L"Enabled", true, ini_path);
     int level = GetPrivateProfileIntW(L"General", L"LogLevel", 0, ini_path.c_str());
     config_.log_level = static_cast<LogLevel>(std::clamp(level, 0, 5));
     Logger::Instance().SetLevel(config_.log_level);
+    if (!ini_note.empty()) LOG_INFO("Config: %s", ini_note.c_str());
     config_.invert_beacon = ReadBool(L"General", L"InvertBeacon", false, ini_path);
     config_.affect_trailers = ReadBool(L"General", L"AffectTrailers", true, ini_path);
     config_.use_cloth_hook = ReadBool(L"General", L"UseClothHook", true, ini_path);

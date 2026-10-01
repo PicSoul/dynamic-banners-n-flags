@@ -20,7 +20,7 @@ cl /nologo /O2 /MD /std:c++20 /EHsc /W3 /D_WINDOWS /D_USRDLL /D_CRT_SECURE_NO_WA
    "src\cloth_hook.cpp" ^
    "libs\minhook\src\buffer.c" "libs\minhook\src\hook.c" "libs\minhook\src\trampoline.c" "libs\minhook\src\hde\hde64.c" ^
    "src\logger.cpp" ^
-   "src\config_manager.cpp" ^
+   "src\config_manager.cpp" "src\ini_upgrade.cpp" ^
    "src\pattern_scanner.cpp" ^
    "src\mem_safe.cpp" ^
    "src\reflection.cpp" ^

@@ -38,7 +38,8 @@ The plugin creates dynamic_banners.ini next to itself on first start, with the
 right defaults for that game. You can edit it to change the behaviour (for
 example InvertBeacon = 1 to hide them while the beacons are ON instead, or
 HideBeacons = 1 to toggle the beacon units too). Delete it to go back to the
-defaults.
+defaults. After an update, new settings are added to your existing file
+automatically; your values are kept.
 
 
 WHAT TOGGLES
