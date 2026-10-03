@@ -32,6 +32,7 @@ void VisibilityController::Initialize(const GameLayout& layout, const std::vecto
     affect_trailers_ = affect_trailers && layout.trailer_connected_offset != 0;
     max_trailers_ = max_trailers;
     publish_ = publish_hidden_patches;
+    publish_cab_ = nullptr;
     vehicles_.clear();
     have_last_ = false;
     last_published_ = 0;
@@ -375,6 +376,11 @@ void VisibilityController::Update(bool want_hidden, bool cloth_must_show) {
         }
     }
 
+    if (publish_cab_) {
+        uintptr_t truck = 0;
+        for (const PlayerVehicle& pv : current) if (pv.is_truck) truck = pv.obj;
+        publish_cab_(truck, want_hidden);
+    }
     if (publish_) {
         publish_(hidden_patches.data(), static_cast<uint32_t>(hidden_patches.size()));
         if (hidden_patches.size() != last_published_) {

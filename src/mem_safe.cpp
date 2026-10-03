@@ -36,6 +36,12 @@ bool SafeWriteU8(uintptr_t addr, uint8_t value) {
     __except (EXCEPTION_EXECUTE_HANDLER) { return false; }
 }
 
+bool SafeWriteU32(uintptr_t addr, uint32_t value) {
+    if (addr < 0x10000) return false;
+    __try { *reinterpret_cast<volatile uint32_t*>(addr) = value; return true; }
+    __except (EXCEPTION_EXECUTE_HANDLER) { return false; }
+}
+
 typedef uintptr_t (__fastcall* GetClassFn)(uintptr_t self);
 
 uintptr_t SafeCallGetClass(uintptr_t obj, uint32_t vtable_slot_offset) {

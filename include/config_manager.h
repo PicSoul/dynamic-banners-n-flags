@@ -35,6 +35,8 @@ struct ModConfig {
     std::string sig_patch_draw;
     std::string sig_model_hookups;
     std::string sig_hookup_class;
+    std::string sig_model_parts;
+    std::string sig_cab_draw;
 
     // Layout values that cannot be read from code
     uint32_t record_size = 0x30;

@@ -82,6 +82,55 @@ static void ResolveBeaconDetection(GameLayout* L) {
         L->model_hookups_offset, L->get_class_vt_slot, L->light_type_offset, (unsigned long long)beacon);
 }
 
+static const Operand MODEL_DESC = { 3, 4 };         // mov rcx, [rdi+disp32]   (model -> descriptor)
+static const Operand MODEL_CALL = { 8, 4 };         // call part_count(descriptor)
+static const Operand MODEL_PARTS = { 21, 4 };       // mov rax, [rdi+disp32]; test byte [rax+rbx*4], 1
+static const Operand CAB_VEHICLE = { 111, 4 };      // mov rax, [rbp+disp32]   (cab object -> vehicle)
+static const Operand CAB_RECORDS = { 118, 4 };      // mov rdi, [rbp+disp32]   (cab object's records data)
+
+// Cab view support (needs the cloth hook); any missing piece switches only that feature off.
+static void ResolveCabView(GameLayout* L) {
+    const ModConfig& cfg = ConfigManager::Instance().GetConfig();
+    PatternScanner& scanner = PatternScanner::Instance();
+    size_t n = 0;
+    PatternMatch cab = scanner.FindUniquePattern(cfg.sig_cab_draw, "CabDraw", &n);
+    PatternMatch parts = scanner.FindUniquePattern(cfg.sig_model_parts, "ModelParts", &n);
+    bool ok = cab && parts;
+    GameLayout C = *L;
+    if (ok) {
+        C.cab_vehicle_offset = ReadOperand(cab.address, CAB_VEHICLE);
+        C.cab_records_data_offset = ReadOperand(cab.address, CAB_RECORDS);
+        C.model_desc_offset = ReadOperand(parts.address, MODEL_DESC);
+        C.model_parts_offset = ReadOperand(parts.address, MODEL_PARTS);
+        // part_count(desc): "sub rsp,28h; cmp byte ptr [rcx+loaded],0; je ...; mov eax,[rcx+count]"
+        int32_t rel = static_cast<int32_t>(ReadOperand(parts.address, MODEL_CALL));
+        uintptr_t fn = parts.address + MODEL_CALL.pos + 4 + rel;
+        uint8_t b[13] = {};
+        for (int i = 0; i < 13 && ok; ++i) ok = SafeReadU8(fn + i, &b[i]);
+        if (ok && b[0] == 0x48 && b[1] == 0x83 && b[2] == 0xEC && b[4] == 0x80 && b[5] == 0x79 && b[7] == 0x00 &&
+            b[8] == 0x74 && b[10] == 0x8B && b[11] == 0x41) {
+            C.desc_loaded_offset = b[6];
+            C.desc_part_count_offset = b[12];
+        } else {
+            LOG_ERROR("GameLayout: model part count code changed");
+            ok = false;
+        }
+        ok = ok && Plausible("cab_vehicle_offset", C.cab_vehicle_offset, 0x1000) &&
+             Plausible("cab_records_data_offset", C.cab_records_data_offset, 0x4000) &&
+             Plausible("model_desc_offset", C.model_desc_offset, 0x1000) &&
+             Plausible("model_parts_offset", C.model_parts_offset, 0x1000);
+    }
+    if (!ok) {
+        LOG_WARN("GameLayout: cab view support unavailable - banners and flags stay visible from the cab");
+        return;
+    }
+    C.cab_draw_function = cab.address;
+    *L = C;
+    LOG_INFO("GameLayout: cab view: vehicle=+0x%X records=+0x%X model parts=+0x%X desc=+0x%X (loaded +0x%X, count +0x%X)",
+        L->cab_vehicle_offset, L->cab_records_data_offset, L->model_parts_offset, L->model_desc_offset,
+        L->desc_loaded_offset, L->desc_part_count_offset);
+}
+
 bool GameLayoutResolver::Resolve(GameLayout* out) {
     const ModConfig& cfg = ConfigManager::Instance().GetConfig();
     PatternScanner& scanner = PatternScanner::Instance();
@@ -152,6 +201,7 @@ bool GameLayoutResolver::Resolve(GameLayout* out) {
     }
 
     if (cfg.hide_beacons) ResolveBeaconDetection(&L);
+    if (L.patch_draw_function) ResolveCabView(&L);
 
     LOG_INFO("GameLayout: game=exe+0x%llX actor=+0x%X truck=+0x%X trailer=+0x%X next=+0x%X",
         (unsigned long long)(L.game_global - scanner.GetModuleBase()), L.actor_offset, L.truck_offset,

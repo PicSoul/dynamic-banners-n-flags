@@ -11,6 +11,7 @@ bool SafeReadU32(uintptr_t addr, uint32_t* out);
 bool SafeReadU8(uintptr_t addr, uint8_t* out);
 bool SafeWriteU64(uintptr_t addr, uint64_t value);
 bool SafeWriteU8(uintptr_t addr, uint8_t value);
+bool SafeWriteU32(uintptr_t addr, uint32_t value);
 
 // Calls obj->vtable[slot]() - the game's "class descriptor" getter - with the same guards. Only calls code inside
 // the executable; returns 0 on any problem. Game thread only.

@@ -11,8 +11,8 @@ namespace DynamicBanners {
 
 // Default slots per game. ETS2 trucks have no oversize banners or warning flags; its trailers' rear signs
 // (wide/long vehicle, TIR) share the r_banner slot.
-// chs_oversize: the front oversize banner of the LORD G350 pickup mod.
-static const char* DEFAULT_SLOTS_ATS = "f_banner, flag_f_l, flag_f_r, r_banner, flag_r_l, flag_r_r, chs_oversize";
+// chs_oversize / ram_oversize: the front oversize banners of the LORD G350 and RVM pickup mods.
+static const char* DEFAULT_SLOTS_ATS = "f_banner, flag_f_l, flag_f_r, r_banner, flag_r_l, flag_r_r, chs_oversize, ram_oversize";
 static const char* DEFAULT_SLOTS_ETS2 = "r_banner";
 
 // Built-in signatures for ATS 1.61. Each literal carries a "DBSIG:<key>=" marker so tools/update_check.py can read
@@ -32,15 +32,25 @@ static const BuiltinSignature BUILTIN_SIGNATURES[] = {
     { "DBSIG:ModelHookups=48 8D 8F ? ? ? ? 48 3B 59 10 0F 83 ? ? ? ? 48 8B 41 08 49 8B D7", &ModConfig::sig_model_hookups },
     { "DBSIG:HookupClass=48 8B 45 08 48 8B 0C D8 48 8B 01 FF 50 ? 48 8B C8 48 85 C0 74 ? 48 3B CE",
       &ModConfig::sig_hookup_class },
+    // The per-part visibility flags of a model instance (cab view copies are hidden by these).
+    { "DBSIG:ModelParts=48 8B 8F ? ? ? ? E8 ? ? ? ? 8B F0 85 C0 74 ? 48 8B 87 ? ? ? ? F6 04 98 01",
+      &ModConfig::sig_model_parts },
+    // The cab view's draw function: draws the cab's own accessory copies and submits the truck's flag cloth
+    // itself (not through PatchDraw). Also gives the cab object's vehicle and records offsets.
+    { "DBSIG:CabDraw=48 8B C4 48 89 48 08 41 56 48 81 EC ? ? ? ? 48 89 58 10 4C 8B F2 48 89 68 18 48 8B E9 "
+      "48 89 70 20 48 8D 0D ? ? ? ? 48 89 78 F0 4C 89 60 E8 4C 89 68 E0 45 0F B6 E8 E8 ? ? ? ? 85 C0 74 ? "
+      "48 8B 4D 10 48 85 C9 74 ? 48 8B 01 49 8B D6 FF 90 90 00 00 00 48 8B 4D 18 48 85 C9 74 ? 48 8B 01 "
+      "49 8B D6 FF 90 90 00 00 00 48 8B 85 ? ? ? ? 48 8B BD ? ? ? ?", &ModConfig::sig_cab_draw },
 };
 
-// chs_beacsire: the beacon bars of the LORD G350 pickup mod.
-static const char* DEFAULT_BEACON_SLOTS = "beacon, chs_beacon, rear_body, chs_beacsire";
+// chs_beacsire / ram_beacsire: the beacon bars of the LORD G350 and RVM pickup mods.
+static const char* DEFAULT_BEACON_SLOTS = "beacon, chs_beacon, rear_body, chs_beacsire, ram_beacsire";
 
 // Earlier defaults: a value still equal to one of these was never customised, so it is moved to the new
 // default (customised values are left alone).
-static const char* OLD_SLOTS_ATS[] = {"f_banner, flag_f_l, flag_f_r, r_banner, flag_r_l, flag_r_r"};
-static const char* OLD_BEACON_SLOTS[] = {"beacon, chs_beacon, rear_body"};
+static const char* OLD_SLOTS_ATS[] = {"f_banner, flag_f_l, flag_f_r, r_banner, flag_r_l, flag_r_r",
+                                     "f_banner, flag_f_l, flag_f_r, r_banner, flag_r_l, flag_r_r, chs_oversize"};
+static const char* OLD_BEACON_SLOTS[] = {"beacon, chs_beacon, rear_body", "beacon, chs_beacon, rear_body, chs_beacsire"};
 
 struct BuiltinLayout { const wchar_t* key; uint32_t ModConfig::* field; uint32_t value; };
 static const BuiltinLayout BUILTIN_LAYOUT[] = {
@@ -178,8 +188,8 @@ static std::string MigrateKey(std::string& text, const char* key, const char* co
 }
 
 static std::string MigrateDefaults(std::string& text, bool ets2) {
-    std::string a = ets2 ? std::string() : MigrateKey(text, "Slots", OLD_SLOTS_ATS, 1, DEFAULT_SLOTS_ATS);
-    std::string b = MigrateKey(text, "BeaconSlots", OLD_BEACON_SLOTS, 1, DEFAULT_BEACON_SLOTS);
+    std::string a = ets2 ? std::string() : MigrateKey(text, "Slots", OLD_SLOTS_ATS, _countof(OLD_SLOTS_ATS), DEFAULT_SLOTS_ATS);
+    std::string b = MigrateKey(text, "BeaconSlots", OLD_BEACON_SLOTS, _countof(OLD_BEACON_SLOTS), DEFAULT_BEACON_SLOTS);
     return a.empty() ? b : b.empty() ? a : a + ", " + b;
 }
 

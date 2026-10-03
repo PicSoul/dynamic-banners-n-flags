@@ -38,6 +38,7 @@ private:
     bool paused_ = true;
     bool cloth_hook_ = false;
     unsigned frames_since_heartbeat_ = 0;
+    int logged_cab_copies_ = -1;
     ULONGLONG last_heartbeat_ = 0;
 };
 

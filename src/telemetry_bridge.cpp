@@ -77,6 +77,13 @@ scs_result_t TelemetryBridge::Initialize(const scs_u32_t version, const scs_tele
     }
     cloth_hook_ = publish != nullptr;
     VisibilityController::Instance().Initialize(layout, tokens, beacon_tokens, cfg.affect_trailers, cfg.max_trailers, publish);
+    if (cloth_hook_ && layout.cab_draw_function) {
+        CabLayout cab = { layout.patches_data_offset, layout.cab_vehicle_offset, layout.cab_records_data_offset,
+                          layout.record_size, layout.record_token_offset, 0x10, layout.model_parts_offset,
+                          layout.model_desc_offset, layout.desc_loaded_offset, layout.desc_part_count_offset };
+        if (ClothHook::InstallCab(layout.cab_draw_function, cab, tokens.data(), static_cast<uint32_t>(tokens.size())))
+            VisibilityController::Instance().SetCabPublisher(&ClothHook::SetCabTarget);
+    }
 
     p->register_for_event(SCS_TELEMETRY_EVENT_paused, OnPauseEvent, nullptr);
     p->register_for_event(SCS_TELEMETRY_EVENT_started, OnPauseEvent, nullptr);
@@ -135,6 +142,12 @@ void TelemetryBridge::OnFrameEnd() {
     bool visible = beacon_active_ != cfg.invert_beacon;
     // Without the hook, flag cloth must be back in the game's patch list whenever it may rebuild vehicles.
     vc.Update(!visible, !cloth_hook_ && paused_);
+
+    int copies = ClothHook::CabCopiesHidden();
+    if (copies != logged_cab_copies_) {
+        LOG_INFO("Cab view: %d banner/flag cop%s hidden from the cab", copies, copies == 1 ? "y" : "ies");
+        logged_cab_copies_ = copies;
+    }
 }
 
 } // namespace DynamicBanners

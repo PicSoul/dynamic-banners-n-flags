@@ -8,10 +8,12 @@ if not exist "bin" mkdir "bin"
 if exist "bin\test_config.ini" del "bin\test_config.ini"
 
 cl /nologo /O2 /MD /std:c++20 /EHsc /W3 /D_CRT_SECURE_NO_WARNINGS ^
-   /I "include" /I "sdk\include" ^
+   /I "include" /I "sdk\include" /I "libs\minhook\include" ^
    "tests\test_mock.cpp" ^
    "src\pattern_scanner.cpp" "src\config_manager.cpp" "src\ini_upgrade.cpp" "src\logger.cpp" ^
-   "src\mem_safe.cpp" "src\reflection.cpp" "src\visibility_controller.cpp" ^
+   "src\mem_safe.cpp" "src\reflection.cpp" "src\visibility_controller.cpp" "src\cloth_hook.cpp" ^
+   "libs\minhook\src\buffer.c" "libs\minhook\src\hook.c" "libs\minhook\src\trampoline.c" ^
+   "libs\minhook\src\hde\hde64.c" ^
    /Fe:"bin\unit_tests.exe" /Fo:"bin\\" || exit /b 1
 
 rem Signature test: the given executable, or every SCS truck game found through Steam (ATS and/or ETS2).

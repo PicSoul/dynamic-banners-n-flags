@@ -15,6 +15,7 @@
 #include "mem_safe.h"
 #include "visibility_controller.h"
 #include "logger.h"
+#include "cloth_hook.h"
 
 using namespace DynamicBanners;
 
@@ -82,6 +83,10 @@ static void TestSignaturesAgainstExe(const char* exe_path) {
         { "PatchDraw",           &cfg.sig_patch_draw, 0, 0, 0 },
         { "ModelHookups",        &cfg.sig_model_hookups, 3, 4, 0x318 },
         { "HookupClass",         &cfg.sig_hookup_class, 13, 1, 0x28 },
+        { "ModelParts.desc",     &cfg.sig_model_parts, 3, 4, 0x118 },
+        { "ModelParts.parts",    &cfg.sig_model_parts, 21, 4, 0x190 },
+        { "CabDraw.vehicle",     &cfg.sig_cab_draw, 111, 4, 0x118 },
+        { "CabDraw.records",     &cfg.sig_cab_draw, 118, 4, 0x12B8 },
     };
     for (const Expect& e : expects) {
         size_t count = 0;
@@ -351,6 +356,113 @@ static void TestBeacons() {
     vc.Update(false);
 }
 
+// A model instance with three parts (part 1 already hidden by the game, e.g. another variant).
+struct FakePartsModel {
+    std::vector<uint8_t> obj = std::vector<uint8_t>(0x200, 0);
+    std::vector<uint8_t> desc = std::vector<uint8_t>(0x40, 0);
+    uint32_t parts[3] = { 1, 0, 1 };
+    FakePartsModel() {
+        Put64(obj, 0x118, P(desc.data()));
+        Put64(obj, 0x190, P(parts));
+        desc[0x18] = 1;
+        uint32_t n = 3; memcpy(&desc[0x1C], &n, 4);
+    }
+};
+
+// The cab view hook on stand-in functions. While the player's truck is hidden, the cab draw sees the truck's
+// patch list without the hidden flags and the cab's copies of the target accessories with every part off;
+// before it returns everything is the game's again. Other cabs (dealer preview) pass straight through.
+static uintptr_t g_cab_truck_obj;
+static uint64_t g_cab_seen[8], g_cab_seen_n;
+static uint32_t g_cab_flag_parts[3], g_cab_mirror_parts[3];
+static FakePartsModel* g_cab_flag;
+static FakePartsModel* g_cab_mirror;
+static __declspec(noinline) uintptr_t __fastcall FakeCabDraw(uintptr_t interior, uintptr_t view, uintptr_t a3, uintptr_t a4) {
+    const uint64_t* data = *reinterpret_cast<uint64_t* const*>(g_cab_truck_obj + 0x7C8);
+    g_cab_seen_n = *reinterpret_cast<const uint64_t*>(g_cab_truck_obj + 0x7D0);
+    for (uint64_t i = 0; i < g_cab_seen_n && i < 8; ++i) g_cab_seen[i] = data[i];
+    memcpy(g_cab_flag_parts, g_cab_flag->parts, sizeof(g_cab_flag_parts));
+    memcpy(g_cab_mirror_parts, g_cab_mirror->parts, sizeof(g_cab_mirror_parts));
+    return interior ^ (view * 3) ^ (a3 * 5) ^ (a4 * 7);
+}
+static volatile int g_patch_draws;
+static __declspec(noinline) void __fastcall FakePatchDraw(uintptr_t patch, uintptr_t view) {
+    g_patch_draws = g_patch_draws + static_cast<int>(patch & 0xFF) + static_cast<int>(view & 1) + 1;
+}
+
+static void TestCabHook() {
+    printf("[7] Cab view hook: cloth list and the cab's own copies changed only during the cab draw\n");
+    std::vector<uint8_t> truck(0x1100, 0), other_truck(0x1100, 0);
+    std::vector<uint8_t> flag_l(0x40, 0), flag_r(0x40, 0), other(0x40, 0);
+    std::vector<uint64_t> patches = { P(other.data()), P(flag_l.data()), P(flag_r.data()) };
+    Put64(truck, 0x7C8, P(patches.data()));
+    Put64(truck, 0x7D0, 3);
+    g_cab_truck_obj = P(truck.data());
+
+    // The cab object: back-link to its truck at +0x118, records at +0x12B8 (a mirror and the flag's copy).
+    FakePartsModel flag, mirror;
+    g_cab_flag = &flag; g_cab_mirror = &mirror;
+    std::vector<uint8_t> cab_obj(0x1400, 0), cab_records(0x30 * 2, 0);
+    Put64(cab_obj, 0x118, P(truck.data()));
+    Put64(cab_records, 0x00, EncodeScsToken("int_mirror"));
+    Put64(cab_records, 0x10, P(mirror.obj.data()));
+    Put64(cab_records, 0x30, FLAG_F_L);
+    Put64(cab_records, 0x30 + 0x10, P(flag.obj.data()));
+    Put64(cab_obj, 0x12B8, P(cab_records.data()));
+    Put64(cab_obj, 0x12C0, 2);
+    std::vector<uint8_t> dealer_cab = cab_obj;                     // same layout, another truck
+    Put64(dealer_cab, 0x118, P(other_truck.data()));
+
+    CHECK(ClothHook::Install(P(&FakePatchDraw)));
+    const CabLayout layout = { 0x7C8, 0x118, 0x12B8, 0x30, 0x00, 0x10, 0x190, 0x118, 0x18, 0x1C };
+    const uint64_t targets[] = { F_BANNER, FLAG_F_L };
+    CHECK(ClothHook::InstallCab(P(&FakeCabDraw), layout, targets, 2));
+    auto cab = reinterpret_cast<uintptr_t(__fastcall*)(uintptr_t, uintptr_t, uintptr_t, uintptr_t)>(
+        reinterpret_cast<void*>(&FakeCabDraw));
+    const uintptr_t expect = P(cab_obj.data()) ^ (11 * 3) ^ (22 * 5) ^ (33 * 7);
+
+    // Shown: the game's data as it is.
+    ClothHook::SetCabTarget(P(truck.data()), false);
+    CHECK(cab(P(cab_obj.data()), 11, 22, 33) == expect);
+    CHECK(g_cab_seen_n == 3 && g_cab_flag_parts[0] == 1);
+
+    const uint64_t hidden[] = { P(flag_l.data()), P(flag_r.data()) };
+    ClothHook::SetHiddenPatches(hidden, 2);
+    ClothHook::SetCabTarget(P(truck.data()), true);
+    CHECK(cab(P(cab_obj.data()), 11, 22, 33) == expect);           // arguments and result passed through
+    CHECK(g_cab_seen_n == 1 && g_cab_seen[0] == P(other.data()));  // the cab saw no flag cloth
+    CHECK(g_cab_flag_parts[0] == 0 && g_cab_flag_parts[1] == 0 && g_cab_flag_parts[2] == 0);   // nor the flag copy
+    CHECK(g_cab_mirror_parts[0] == 1 && g_cab_mirror_parts[2] == 1);                           // the mirror stays
+    CHECK(ClothHook::CabCopiesHidden() == 1);
+    CHECK(Get64(truck, 0x7C8) == P(patches.data()) && Get64(truck, 0x7D0) == 3);   // the game's list is back
+    CHECK(patches[1] == P(flag_l.data()) && patches[2] == P(flag_r.data()));      // and untouched
+    CHECK(flag.parts[0] == 1 && flag.parts[1] == 0 && flag.parts[2] == 1);        // parts exactly as before
+
+    // The dealer preview's cab (another truck): straight through.
+    cab(P(dealer_cab.data()), 11, 22, 33);
+    CHECK(g_cab_seen_n == 3 && g_cab_flag_parts[0] == 1);
+
+    // Model not loaded yet (descriptor flag clear): left alone.
+    flag.desc[0x18] = 0;
+    cab(P(cab_obj.data()), 11, 22, 33);
+    CHECK(g_cab_flag_parts[0] == 1);
+    flag.desc[0x18] = 1;
+
+    // Shown again: straight through.
+    ClothHook::SetHiddenPatches(nullptr, 0);
+    ClothHook::SetCabTarget(P(truck.data()), false);
+    cab(P(cab_obj.data()), 11, 22, 33);
+    CHECK(g_cab_seen_n == 3 && g_cab_flag_parts[0] == 1);
+
+    ClothHook::Uninstall();
+    CHECK(!ClothHook::IsInstalled());
+    ClothHook::SetCabTarget(P(truck.data()), true);
+    ClothHook::SetHiddenPatches(hidden, 2);
+    cab(P(cab_obj.data()), 11, 22, 33);                             // unhooked: plain function again
+    CHECK(g_cab_seen_n == 3 && g_cab_flag_parts[0] == 1);
+    ClothHook::SetHiddenPatches(nullptr, 0);
+}
+
 // Signature overrides in the ini are only used for the game build they are stamped with.
 static void TestOverrideGating() {
     printf("[0] Config: signature overrides only apply to their own game build\n");
@@ -376,11 +488,12 @@ static void TestOverrideGating() {
     // Per-game defaults: ETS2 trucks have no oversize banners or warning flags.
     cm.Load(L"bin\\test_ets2_defaults.ini", "X", true);
     CHECK(cm.GetConfig().target_slots.size() == 1 && cm.GetConfig().target_slots[0] == "r_banner");
-    CHECK(!cm.GetConfig().hide_beacons && cm.GetConfig().beacon_slots.size() == 4);   // beacon units are opt-in
+    CHECK(!cm.GetConfig().hide_beacons && cm.GetConfig().beacon_slots.size() == 5);   // beacon units are opt-in
     DeleteFileW(L"bin\\test_ets2_defaults.ini");
     cm.Load(L"bin\\test_ats_defaults.ini", "X", false);
-    CHECK(cm.GetConfig().target_slots.size() == 7);
+    CHECK(cm.GetConfig().target_slots.size() == 8);
     CHECK(cm.GetConfig().target_slots[6] == "chs_oversize");      // LORD G350 front banner
+    CHECK(cm.GetConfig().target_slots[7] == "ram_oversize");      // RVM pickup front banner
     DeleteFileW(L"bin\\test_ats_defaults.ini");
 
     // An ini whose Slots / BeaconSlots still hold an older default moves to the new default;
@@ -391,8 +504,18 @@ static void TestOverrideGating() {
              "BeaconSlots = beacon, my_beacon\n";
     }
     cm.Load(L"bin\\test_migrate.ini", "X", false);
-    CHECK(cm.GetConfig().target_slots.size() == 7);
+    CHECK(cm.GetConfig().target_slots.size() == 8);
     CHECK(cm.GetConfig().beacon_slots.size() == 2 && cm.GetConfig().beacon_slots[1] == "my_beacon");
+    DeleteFileW(L"bin\\test_migrate.ini");
+    // ... also the v1.3.3 defaults
+    {
+        std::ofstream f(L"bin\\test_migrate.ini");
+        f << "[General]\nEnabled = 1\n[Targets]\nSlots = f_banner, flag_f_l, flag_f_r, r_banner, flag_r_l, flag_r_r, "
+             "chs_oversize\nBeaconSlots = beacon, chs_beacon, rear_body, chs_beacsire\n";
+    }
+    cm.Load(L"bin\\test_migrate.ini", "X", false);
+    CHECK(cm.GetConfig().target_slots.size() == 8 && cm.GetConfig().target_slots[7] == "ram_oversize");
+    CHECK(cm.GetConfig().beacon_slots.size() == 5 && cm.GetConfig().beacon_slots[4] == "ram_beacsire");
     DeleteFileW(L"bin\\test_migrate.ini");
 }
 
@@ -407,6 +530,7 @@ int main(int argc, char** argv) {
     TestController(false);
     TestController(true);
     TestBeacons();
+    TestCabHook();
     printf(g_failures ? "\n%d CHECK(S) FAILED\n" : "\nALL TESTS PASSED\n", g_failures);
     return g_failures ? 1 : 0;
 }

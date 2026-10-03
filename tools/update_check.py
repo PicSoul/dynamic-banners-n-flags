@@ -75,6 +75,8 @@ SIGNATURES = {
     'PatchDraw': [('patch_draw_function', 0, 0, 'fn')],
     'ModelHookups': [('model_hookups', 3, 4, 'off')],
     'HookupClass': [('get_class_vt_slot', 13, 1, 'off')],
+    'ModelParts': [('model_desc', 3, 4, 'off'), ('model_parts', 21, 4, 'off')],
+    'CabDraw': [('cab_draw_function', 0, 0, 'fn'), ('cab_vehicle', 111, 4, 'off'), ('cab_records', 118, 4, 'off')],
 }
 REQUIRED = {'PlayerChain', 'Records', 'Patches', 'NextTrailer', 'Merged'}
 OPTIONAL_NOTE = {
@@ -82,13 +84,16 @@ OPTIONAL_NOTE = {
     'PatchDraw': 'without it, flag cloth uses the fallback (it shows while the game is paused)',
     'ModelHookups': 'without it, beacon units are not toggled',
     'HookupClass': 'without it, beacon units are not toggled',
+    'ModelParts': 'without it, banners and flags stay visible from the cab',
+    'CabDraw': 'without it, banners and flags stay visible from the cab',
     'Reflection': 'without it, beacon units are not toggled',
 }
 # Values found for ATS 1.61, shown for comparison only.
 KNOWN_161 = {'actor': 0x31B0, 'truck': 0x18, 'trailer': 0xC8, 'records_data': 0x770, 'records_count': 0x778,
              'patches_data': 0x7C8, 'patches_count': 0x7D0, 'next_trailer': 0x1060, 'merged': 0x1020,
              'trailer_connected': 0xFB8, 'model_hookups': 0x318, 'get_class_vt_slot': 0x28,
-             'light_type': 0x230, 'beacon': 0x200}
+             'light_type': 0x230, 'beacon': 0x200, 'cab_vehicle': 0x118, 'cab_records': 0x12B8,
+             'model_desc': 0x118, 'model_parts': 0x190}
 
 
 def check_reflection(exe):
@@ -462,12 +467,13 @@ def check_game(args, here, exe_path):
         if good and good[0][0] >= 0.75:
             best = good[0]
             ties = [r for r in good if best[0] - r[0] < 0.05]
-            same = all({k: v for k, v in r[2].items() if k != 'patch_draw_function'} ==
-                       {k: v for k, v in best[2].items() if k != 'patch_draw_function'} for r in ties)
+            fn_keys = {k for k, _, _, kind in SIGNATURES[name] if kind == 'fn'}
+            same = all({k: v for k, v in r[2].items() if k not in fn_keys} ==
+                       {k: v for k, v in best[2].items() if k not in fn_keys} for r in ties)
             print(f'             best candidate exe+0x{exe.text_va + best[1]:X}: match score {best[0]:.2f} '
                   f'(1.00 = identical bytes, +0.10 when the offsets are unchanged), '
                   f'{len(ties)} candidate(s) within 5%' + (' (all give the same values)' if len(ties) > 1 and same else ''))
-            if len(ties) == 1 or (same and name != 'PatchDraw'):
+            if len(ties) == 1 or (same and not fn_keys):
                 chosen = best
         elif results:
             print(f'             best candidate only scores {results[0][0]:.2f} - too different to trust')

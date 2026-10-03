@@ -20,17 +20,17 @@ warning flags only while your beacons are on**. It works on your own truck and o
 
 | | American Truck Simulator | Euro Truck Simulator 2 |
 |---|---|---|
-| Banners and flags (`Slots`) | truck `f_banner`, `flag_f_l`, `flag_f_r`; trailer `r_banner`, `flag_r_l`, `flag_r_r`; LORD G350 mod `chs_oversize` | trailer `r_banner` (wide/long vehicle, TIR plates) |
-| Beacon units (`BeaconSlots`, only with `HideBeacons = 1`) | `beacon`, `chs_beacon`, `rear_body`, `chs_beacsire` | `beacon`, `chs_beacon`, `rear_body`, `chs_beacsire` |
+| Banners and flags (`Slots`) | truck `f_banner`, `flag_f_l`, `flag_f_r`; trailer `r_banner`, `flag_r_l`, `flag_r_r`; LORD G350 mod `chs_oversize`; RVM pickup mod `ram_oversize` | trailer `r_banner` (wide/long vehicle, TIR plates) |
+| Beacon units (`BeaconSlots`, only with `HideBeacons = 1`) | `beacon`, `chs_beacon`, `rear_body`, `chs_beacsire`, `ram_beacsire` | `beacon`, `chs_beacon`, `rear_body`, `chs_beacsire`, `ram_beacsire` |
 
 ETS2 trucks have no oversize banners or warning flags. Their `flag_l` / `flag_r` slots hold national flags, which
 keep showing unless you add them to `Slots`. Modded trucks and trailers work too if they use the same slot names;
 otherwise add their slot names in the ini. To find them, set `LogLevel = 3`: when the plugin starts following your
 truck or a trailer, `dynamic_banners.log` lists that vehicle's accessory slots (toggled ones are marked `*`).
 
-Supported mods: **LORD G350** (by Jon Ruda) - its front banner (`chs_oversize`) and beacons (`chs_beacsire`) are in
-the defaults. If your ini still has the previous default `Slots` / `BeaconSlots`, it is updated automatically;
-customised values are kept.
+Supported mods: **LORD G350** and **RVM Pickup** (both by Jon Ruda) - their front banners (`chs_oversize`,
+`ram_oversize`) and beacons (`chs_beacsire`, `ram_beacsire`) are in the defaults. If your ini still has a previous
+default `Slots` / `BeaconSlots`, it is updated automatically; customised values are kept.
 
 ## Install
 
@@ -71,7 +71,7 @@ settings that no longer exist are removed).
 | `UseClothHook` | 1 | Hide flag cloth with a small draw hook (0 = no code hooks at all, but then flag cloth has to be shown while paused) |
 | `Slots` | per game, see above | Accessory slot names to toggle |
 | `HideBeacons` | 0 | 1 = also toggle beacon units (roof/chassis beacons, trailer beacon and strobe bars) |
-| `BeaconSlots` | `beacon, chs_beacon, rear_body, chs_beacsire` | Slots checked for beacon units (an accessory there is toggled only if its model has beacon lights) |
+| `BeaconSlots` | `beacon, chs_beacon, rear_body, chs_beacsire, ram_beacsire` | Slots checked for beacon units (an accessory there is toggled only if its model has beacon lights) |
 
 ## How it works
 
@@ -84,6 +84,7 @@ your truck and to each **hooked-up** trailer, and then:
 | Banners and the static part of flags | The accessory's visibility mask is set to 0 (a data write) |
 | Truck accessories baked into the merged truck model | The truck's merged model is switched off while hidden (a data write) |
 | Flag cloth (physics simulated) | One small hook on the cloth draw function skips your hidden flags. The cloth keeps simulating, so it waves naturally when shown again. |
+| Cab view | The cab draws its own copies of the accessories (from their interior models) and your truck's flag cloth. A hook on the cab draw hides them for the duration of that call only and puts everything back before it returns. |
 | Beacon units (`HideBeacons = 1`) | Same visibility mask as banners. An accessory counts as a beacon unit when its model has a light the game classifies as a beacon (class `flare_vehicle`, `light_type` beacon), read from the game's own reflection data by name. |
 
 Everything is undone exactly when the banners should be shown again. Every game-memory access is exception-guarded.

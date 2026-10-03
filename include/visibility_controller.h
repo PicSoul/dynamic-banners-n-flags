@@ -14,6 +14,8 @@ namespace DynamicBanners {
 //  1. accessory record visibility mask = 0          (banners and the static part of flags)
 //  2. truck only: merged-model byte bit 0 = 1       (forces per-record drawing so (1) is honoured)
 //  3. flag physics patches moved past a reduced count of the vehicle's patch array (flag cloth)
+// The cab view draws its own copies of the accessories and the truck's cloth; that is handled inside the cab
+// draw hook (ClothHook), which this class only tells which truck is the player's and whether to hide.
 class VisibilityController {
 public:
     static VisibilityController& Instance() {
@@ -32,6 +34,10 @@ public:
                     const std::vector<uint64_t>& beacon_tokens,
                     bool affect_trailers, uint32_t max_trailers, PublishHiddenPatchesFn publish_hidden_patches);
     bool IsActive() const { return active_; }
+
+    // Receives the player's truck (0 = none) and whether its banners/flags are hidden, every update.
+    typedef void (*PublishCabTargetFn)(uintptr_t truck, bool hide);
+    void SetCabPublisher(PublishCabTargetFn fn) { publish_cab_ = fn; }
 
     // Debug heartbeat: logs the truck's merged-model pointer/flag and the target records' masks.
     void LogDiagnostics(const char* context) const;
@@ -86,6 +92,7 @@ private:
     uint32_t max_trailers_ = 10;
     bool active_ = false;
     PublishHiddenPatchesFn publish_ = nullptr;
+    PublishCabTargetFn publish_cab_ = nullptr;
     size_t last_published_ = 0;
     bool last_want_hidden_ = false;
     bool have_last_ = false;

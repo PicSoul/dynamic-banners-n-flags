@@ -35,6 +35,20 @@ struct GameLayout {
     uint64_t beacon_light_bits = 0;      // light_type enum value "beacon"
     bool beacon_detection = false;
 
+    // Cab view (hook mode only; cab_draw_function 0 = unavailable, banners and flags show from the cab).
+    // The cab draw (`this` = the cab object) draws the cab's own copies of the accessories, built from
+    // interior_model, without checking the record mask, and submits the truck's flag cloth itself. See ClothHook.
+    uintptr_t cab_draw_function = 0;
+    uint32_t cab_vehicle_offset = 0;        // cab object -> its vehicle
+    uint32_t cab_records_data_offset = 0;   // cab object: accessory records (+0 data, +8 count)
+    // Model instance parts: *(model + model_parts_offset) = u32 per part, bit 0 = drawn; part count = u32 at
+    // desc + desc_part_count_offset where desc = *(model + model_desc_offset), valid once the byte at
+    // desc + desc_loaded_offset is non-zero.
+    uint32_t model_desc_offset = 0;
+    uint32_t model_parts_offset = 0;
+    uint32_t desc_loaded_offset = 0;
+    uint32_t desc_part_count_offset = 0;
+
     // Record / patch layout (from config; not readable from code)
     uint32_t record_size = 0;
     uint32_t record_token_offset = 0;
