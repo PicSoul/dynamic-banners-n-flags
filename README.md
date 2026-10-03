@@ -20,12 +20,17 @@ warning flags only while your beacons are on**. It works on your own truck and o
 
 | | American Truck Simulator | Euro Truck Simulator 2 |
 |---|---|---|
-| Banners and flags (`Slots`) | truck `f_banner`, `flag_f_l`, `flag_f_r`; trailer `r_banner`, `flag_r_l`, `flag_r_r` | trailer `r_banner` (wide/long vehicle, TIR plates) |
-| Beacon units (`BeaconSlots`, only with `HideBeacons = 1`) | `beacon`, `chs_beacon`, `rear_body` | `beacon`, `chs_beacon`, `rear_body` |
+| Banners and flags (`Slots`) | truck `f_banner`, `flag_f_l`, `flag_f_r`; trailer `r_banner`, `flag_r_l`, `flag_r_r`; LORD G350 mod `chs_oversize` | trailer `r_banner` (wide/long vehicle, TIR plates) |
+| Beacon units (`BeaconSlots`, only with `HideBeacons = 1`) | `beacon`, `chs_beacon`, `rear_body`, `chs_beacsire` | `beacon`, `chs_beacon`, `rear_body`, `chs_beacsire` |
 
 ETS2 trucks have no oversize banners or warning flags. Their `flag_l` / `flag_r` slots hold national flags, which
 keep showing unless you add them to `Slots`. Modded trucks and trailers work too if they use the same slot names;
-otherwise add their slot names in the ini.
+otherwise add their slot names in the ini. To find them, set `LogLevel = 3`: when the plugin starts following your
+truck or a trailer, `dynamic_banners.log` lists that vehicle's accessory slots (toggled ones are marked `*`).
+
+Supported mods: **LORD G350** (by Jon Ruda) - its front banner (`chs_oversize`) and beacons (`chs_beacsire`) are in
+the defaults. If your ini still has the previous default `Slots` / `BeaconSlots`, it is updated automatically;
+customised values are kept.
 
 ## Install
 
@@ -66,7 +71,7 @@ settings that no longer exist are removed).
 | `UseClothHook` | 1 | Hide flag cloth with a small draw hook (0 = no code hooks at all, but then flag cloth has to be shown while paused) |
 | `Slots` | per game, see above | Accessory slot names to toggle |
 | `HideBeacons` | 0 | 1 = also toggle beacon units (roof/chassis beacons, trailer beacon and strobe bars) |
-| `BeaconSlots` | `beacon, chs_beacon, rear_body` | Slots checked for beacon units (an accessory there is toggled only if its model has beacon lights) |
+| `BeaconSlots` | `beacon, chs_beacon, rear_body, chs_beacsire` | Slots checked for beacon units (an accessory there is toggled only if its model has beacon lights) |
 
 ## How it works
 

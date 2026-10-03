@@ -11,6 +11,17 @@ static const uint64_t MAX_RECORDS = 1024;
 static const uint64_t MAX_PATCHES = 64;
 static const uintptr_t REC_MODEL = 0x10;   // accessory record: model_object* (record constructor 0x904E40)
 
+// SCS token -> text (base 38: 0-9, a-z, _), e.g. the accessory slot name a record carries.
+static void TokenToString(uint64_t token, char* out, size_t cap) {
+    static const char kChars[] = "\0" "0123456789abcdefghijklmnopqrstuvwxyz_";
+    size_t i = 0;
+    while (token && i + 1 < cap) {
+        out[i++] = kChars[token % 38];
+        token /= 38;
+    }
+    out[i] = 0;
+}
+
 void VisibilityController::Initialize(const GameLayout& layout, const std::vector<uint64_t>& target_tokens,
                                       const std::vector<uint64_t>& beacon_tokens,
                                       bool affect_trailers, uint32_t max_trailers,
@@ -268,6 +279,27 @@ int VisibilityController::Show(Vehicle& v) {
     return writes;
 }
 
+// Logs the accessory slot names on a player vehicle (Info), so slot names used by modded trucks and trailers
+// can be found and added to Slots / BeaconSlots.
+void VisibilityController::LogSlotNames(const PlayerVehicle& pv) const {
+    if (Logger::Instance().GetLevel() < LogLevel::Info) return;
+    uint64_t data = 0, count = 0;
+    if (!SafeReadU64(pv.obj + layout_.records_data_offset, &data) || !IsHeapPtr(data) ||
+        !SafeReadU64(pv.obj + layout_.records_count_offset, &count) || count > MAX_RECORDS) return;
+    std::vector<uint64_t> seen;
+    std::string line;
+    for (uint64_t i = 0; i < count; ++i) {
+        uint64_t token = 0;
+        if (!SafeReadU64(static_cast<uintptr_t>(data + i * layout_.record_size) + layout_.record_token_offset, &token) ||
+            !token || std::find(seen.begin(), seen.end(), token) != seen.end()) continue;
+        seen.push_back(token);
+        char name[16];
+        TokenToString(token, name, sizeof(name));
+        line += (line.empty() ? "" : ", ") + std::string(name) + (IsTarget(token) ? "*" : "");
+    }
+    LOG_INFO("VisibilityController: %s accessory slots (* = toggled): %s", pv.is_truck ? "truck" : "trailer", line.c_str());
+}
+
 void VisibilityController::LogDiagnostics(const char* context) const {
     std::vector<PlayerVehicle> current;
     bool ok = ResolvePlayerVehicles(&current);
@@ -333,6 +365,7 @@ void VisibilityController::Update(bool want_hidden, bool cloth_must_show) {
             it = vehicles_.end() - 1;
             LOG_INFO("VisibilityController: tracking player %s 0x%llX", pv.is_truck ? "truck" : "trailer",
                 (unsigned long long)pv.obj);
+            LogSlotNames(pv);
         }
         if (want_hidden) {
             hidden += Hide(*it, !cloth_must_show);

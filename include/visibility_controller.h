@@ -63,6 +63,7 @@ private:
     };
 
     struct PlayerVehicle { uintptr_t obj; bool is_truck; };
+    void LogSlotNames(const PlayerVehicle& pv) const;
 
     bool ResolvePlayerVehicles(std::vector<PlayerVehicle>* out) const;
     bool IsTarget(uint64_t token) const;

@@ -376,11 +376,24 @@ static void TestOverrideGating() {
     // Per-game defaults: ETS2 trucks have no oversize banners or warning flags.
     cm.Load(L"bin\\test_ets2_defaults.ini", "X", true);
     CHECK(cm.GetConfig().target_slots.size() == 1 && cm.GetConfig().target_slots[0] == "r_banner");
-    CHECK(!cm.GetConfig().hide_beacons && cm.GetConfig().beacon_slots.size() == 3);   // beacon units are opt-in
+    CHECK(!cm.GetConfig().hide_beacons && cm.GetConfig().beacon_slots.size() == 4);   // beacon units are opt-in
     DeleteFileW(L"bin\\test_ets2_defaults.ini");
     cm.Load(L"bin\\test_ats_defaults.ini", "X", false);
-    CHECK(cm.GetConfig().target_slots.size() == 6);
+    CHECK(cm.GetConfig().target_slots.size() == 7);
+    CHECK(cm.GetConfig().target_slots[6] == "chs_oversize");      // LORD G350 front banner
     DeleteFileW(L"bin\\test_ats_defaults.ini");
+
+    // An ini whose Slots / BeaconSlots still hold an older default moves to the new default;
+    // a customised value is kept.
+    {
+        std::ofstream f(L"bin\\test_migrate.ini");
+        f << "[General]\nEnabled = 1\n[Targets]\nSlots = f_banner, flag_f_l, flag_f_r, r_banner, flag_r_l, flag_r_r\n"
+             "BeaconSlots = beacon, my_beacon\n";
+    }
+    cm.Load(L"bin\\test_migrate.ini", "X", false);
+    CHECK(cm.GetConfig().target_slots.size() == 7);
+    CHECK(cm.GetConfig().beacon_slots.size() == 2 && cm.GetConfig().beacon_slots[1] == "my_beacon");
+    DeleteFileW(L"bin\\test_migrate.ini");
 }
 
 int main(int argc, char** argv) {

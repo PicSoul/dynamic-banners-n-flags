@@ -11,7 +11,8 @@ namespace DynamicBanners {
 
 // Default slots per game. ETS2 trucks have no oversize banners or warning flags; its trailers' rear signs
 // (wide/long vehicle, TIR) share the r_banner slot.
-static const char* DEFAULT_SLOTS_ATS = "f_banner, flag_f_l, flag_f_r, r_banner, flag_r_l, flag_r_r";
+// chs_oversize: the front oversize banner of the LORD G350 pickup mod.
+static const char* DEFAULT_SLOTS_ATS = "f_banner, flag_f_l, flag_f_r, r_banner, flag_r_l, flag_r_r, chs_oversize";
 static const char* DEFAULT_SLOTS_ETS2 = "r_banner";
 
 // Built-in signatures for ATS 1.61. Each literal carries a "DBSIG:<key>=" marker so tools/update_check.py can read
@@ -33,7 +34,13 @@ static const BuiltinSignature BUILTIN_SIGNATURES[] = {
       &ModConfig::sig_hookup_class },
 };
 
-static const char* DEFAULT_BEACON_SLOTS = "beacon, chs_beacon, rear_body";
+// chs_beacsire: the beacon bars of the LORD G350 pickup mod.
+static const char* DEFAULT_BEACON_SLOTS = "beacon, chs_beacon, rear_body, chs_beacsire";
+
+// Earlier defaults: a value still equal to one of these was never customised, so it is moved to the new
+// default (customised values are left alone).
+static const char* OLD_SLOTS_ATS[] = {"f_banner, flag_f_l, flag_f_r, r_banner, flag_r_l, flag_r_r"};
+static const char* OLD_BEACON_SLOTS[] = {"beacon, chs_beacon, rear_body"};
 
 struct BuiltinLayout { const wchar_t* key; uint32_t ModConfig::* field; uint32_t value; };
 static const BuiltinLayout BUILTIN_LAYOUT[] = {
@@ -138,6 +145,44 @@ static bool WriteFileAtomic(const std::wstring& path, const std::string& text) {
     return false;
 }
 
+// Replaces "key = <old default>" lines with the new default in `text`; returns what was changed ("" if nothing).
+static std::string MigrateKey(std::string& text, const char* key, const char* const* olds, size_t n_olds, const char* now) {
+    std::string changed;
+    size_t pos = 0;
+    while (pos < text.size()) {
+        size_t end = text.find('\n', pos);
+        if (end == std::string::npos) end = text.size();
+        std::string line = text.substr(pos, end - pos);
+        if (!line.empty() && line.back() == '\r') line.pop_back();
+        size_t eq = line.find('=');
+        if (eq != std::string::npos) {
+            auto trim = [](std::string s) {
+                size_t b = s.find_first_not_of(" \t"), e = s.find_last_not_of(" \t");
+                return b == std::string::npos ? std::string() : s.substr(b, e - b + 1);
+            };
+            if (_stricmp(trim(line.substr(0, eq)).c_str(), key) == 0) {
+                std::string value = trim(line.substr(eq + 1));
+                for (size_t i = 0; i < n_olds; ++i)
+                    if (value == olds[i]) {
+                        std::string fresh = std::string(key) + " = " + now;
+                        text.replace(pos, line.size(), fresh);
+                        end = pos + fresh.size();
+                        changed = std::string(key) + " -> new default";
+                        break;
+                    }
+            }
+        }
+        pos = end + 1;
+    }
+    return changed;
+}
+
+static std::string MigrateDefaults(std::string& text, bool ets2) {
+    std::string a = ets2 ? std::string() : MigrateKey(text, "Slots", OLD_SLOTS_ATS, 1, DEFAULT_SLOTS_ATS);
+    std::string b = MigrateKey(text, "BeaconSlots", OLD_BEACON_SLOTS, 1, DEFAULT_BEACON_SLOTS);
+    return a.empty() ? b : b.empty() ? a : a + ", " + b;
+}
+
 void ConfigManager::SaveDefault(const std::wstring& ini_path, bool ets2) {
     WriteFileAtomic(ini_path, DefaultIni(ets2));
 }
@@ -153,8 +198,11 @@ bool ConfigManager::Load(const std::wstring& ini_path, const std::string& game_b
         std::stringstream text;
         text << f.rdbuf();
         f.close();
-        std::string upgraded;
-        std::string changes = UpgradeIni(text.str(), DefaultIni(ets2), upgraded);
+        std::string current = text.str(), upgraded;
+        std::string changes = MigrateDefaults(current, ets2);
+        std::string added = UpgradeIni(current, DefaultIni(ets2), upgraded);
+        if (!added.empty()) changes += (changes.empty() ? "" : "; ") + added;
+        else upgraded = current;
         if (!changes.empty())
             ini_note = WriteFileAtomic(ini_path, upgraded) ? "updated dynamic_banners.ini: " + changes
                                                            : "could not update dynamic_banners.ini (" + changes + ")";

@@ -52,6 +52,9 @@ WHAT TOGGLES
   Both games, with HideBeacons = 1: beacon units as well.
 
 Modded trucks/trailers that use the same accessory slot names work too.
+The LORD G350 pickup mod is supported out of the box. For other mods, set
+LogLevel = 3: dynamic_banners.log then lists the accessory slot names of
+your truck and trailers, which you can add to Slots / BeaconSlots.
 
 
 WHERE IT APPLIES
